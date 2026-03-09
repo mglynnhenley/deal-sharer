@@ -22,6 +22,7 @@ create table investors (
   email text,
   priority_threshold int not null default 3 check (priority_threshold in (1, 2, 3)),
   sharing_frequency text not null default 'weekly' check (sharing_frequency in ('weekly', 'bi-weekly', 'monthly')),
+  sectors text[] default '{}',
   thesis_description text,
   raw_source_text text
 );

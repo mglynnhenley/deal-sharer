@@ -20,6 +20,7 @@ export type Investor = {
   email: string | null
   priority_threshold: 1 | 2 | 3
   sharing_frequency: 'weekly' | 'bi-weekly' | 'monthly'
+  sectors: string[]
   thesis_description: string | null
   raw_source_text: string | null
 }

@@ -40,6 +40,7 @@ export function InvestorInput() {
       contact_name: investor.contact_name,
       fund_name: investor.fund_name,
       email: investor.email,
+      sectors: investor.sectors,
       priority_threshold: investor.priority_threshold,
       sharing_frequency: investor.sharing_frequency,
       thesis_description: investor.thesis_description,

@@ -43,6 +43,15 @@ function InvestorList({ investors }: { investors: Investor[] }) {
             </span>
             <span className="text-xs text-gray-500">{inv.sharing_frequency}</span>
           </div>
+          {inv.sectors && inv.sectors.length > 0 && (
+            <div className="flex gap-1 mt-1 flex-wrap">
+              {inv.sectors.map((s) => (
+                <span key={s} className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
           {inv.thesis_description && (
             <p className="text-sm text-gray-600 mt-1">{inv.thesis_description}</p>
           )}

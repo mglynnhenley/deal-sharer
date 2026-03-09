@@ -17,6 +17,7 @@ export function InvestorReviewCard({ investor, onConfirm, onDiscard }: Props) {
   const [fundName, setFundName] = useState(investor.fund_name || '')
   const [email, setEmail] = useState(investor.email || '')
   const [thesis, setThesis] = useState(investor.thesis_description || '')
+  const [sectors, setSectors] = useState(investor.sectors.join(', '))
   const [threshold, setThreshold] = useState<1 | 2 | 3>(3)
   const [frequency, setFrequency] = useState<'weekly' | 'bi-weekly' | 'monthly'>('weekly')
 
@@ -25,6 +26,7 @@ export function InvestorReviewCard({ investor, onConfirm, onDiscard }: Props) {
       contact_name: contactName,
       fund_name: fundName || null,
       email: email || null,
+      sectors: sectors ? sectors.split(',').map((s) => s.trim()).filter(Boolean) : [],
       thesis_description: thesis || null,
       priority_threshold: threshold,
       sharing_frequency: frequency,
@@ -49,6 +51,13 @@ export function InvestorReviewCard({ investor, onConfirm, onDiscard }: Props) {
         <label className="text-sm font-medium text-gray-700">Email</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email"
                className="w-full px-2 py-1 border rounded text-sm" />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700">Sectors</label>
+        <input value={sectors} onChange={(e) => setSectors(e.target.value)}
+               placeholder="e.g. AI/ML, SaaS, Climate Tech"
+               className="w-full px-2 py-1 border rounded text-sm" />
+        <p className="text-xs text-gray-400 mt-0.5">Comma-separated, optional</p>
       </div>
       <div>
         <label className="text-sm font-medium text-gray-700">Thesis / Notes</label>
