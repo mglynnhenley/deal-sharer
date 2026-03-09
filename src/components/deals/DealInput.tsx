@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { ExtractedDeal } from '@/lib/extraction/deals'
 import { DealReviewCard } from './DealReviewCard'
 import { saveDeal } from '@/app/deals/actions'
+import { VoiceRecorder } from './VoiceRecorder'
 
 export function DealInput() {
   const [text, setText] = useState('')
@@ -64,13 +65,16 @@ export function DealInput() {
           rows={6}
           className="w-full px-3 py-2 border rounded-md text-sm"
         />
-        <button
-          onClick={handleExtract}
-          disabled={loading || !text.trim()}
-          className="mt-2 px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-gray-800 disabled:opacity-50"
-        >
-          {loading ? 'Extracting...' : 'Extract Deals'}
-        </button>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={handleExtract}
+            disabled={loading || !text.trim()}
+            className="px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-gray-800 disabled:opacity-50"
+          >
+            {loading ? 'Extracting...' : 'Extract Deals'}
+          </button>
+          <VoiceRecorder onTranscript={(t) => setText((prev) => prev ? prev + '\n' + t : t)} />
+        </div>
       </div>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
