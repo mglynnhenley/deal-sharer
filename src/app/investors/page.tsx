@@ -42,6 +42,10 @@ function InvestorList({ investors }: { investors: Investor[] }) {
               P1{inv.priority_threshold > 1 ? `-${inv.priority_threshold}` : ''}
             </span>
             <span className="text-xs text-gray-500">{inv.sharing_frequency}</span>
+            {inv.linkedin_url && (
+              <a href={inv.linkedin_url} target="_blank" rel="noopener noreferrer"
+                 className="text-xs text-blue-600 hover:underline">LinkedIn</a>
+            )}
           </div>
           {inv.sectors && inv.sectors.length > 0 && (
             <div className="flex gap-1 mt-1 flex-wrap">

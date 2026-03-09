@@ -18,6 +18,7 @@ export type Investor = {
   contact_name: string
   fund_name: string | null
   email: string | null
+  linkedin_url: string | null
   priority_threshold: 1 | 2 | 3
   sharing_frequency: 'weekly' | 'bi-weekly' | 'monthly'
   sectors: string[]

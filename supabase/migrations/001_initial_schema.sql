@@ -20,6 +20,7 @@ create table investors (
   contact_name text not null,
   fund_name text,
   email text,
+  linkedin_url text,
   priority_threshold int not null default 3 check (priority_threshold in (1, 2, 3)),
   sharing_frequency text not null default 'weekly' check (sharing_frequency in ('weekly', 'bi-weekly', 'monthly')),
   sectors text[] default '{}',
