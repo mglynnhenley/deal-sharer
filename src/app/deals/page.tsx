@@ -56,6 +56,11 @@ function DealList({ deals }: { deals: Deal[] }) {
               <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100">
                 P{deal.priority}
               </span>
+              {deal.sector && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                  {deal.sector}
+                </span>
+              )}
               <span className="text-xs text-gray-500">
                 {new Date(deal.created_at).toLocaleDateString()}
               </span>

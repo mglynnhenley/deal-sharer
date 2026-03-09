@@ -13,6 +13,7 @@ export function DealReviewCard({ deal, onConfirm, onDiscard }: Props) {
   const [companyName, setCompanyName] = useState(deal.company_name)
   const [websiteUrl, setWebsiteUrl] = useState(deal.website_url || '')
   const [oneLiner, setOneLiner] = useState(deal.one_liner || '')
+  const [sector, setSector] = useState(deal.sector || '')
   const [raiseAmount, setRaiseAmount] = useState(deal.raise_amount?.toString() || '')
   const [currency, setCurrency] = useState(deal.currency || 'EUR')
   const [priority, setPriority] = useState<1 | 2 | 3>(2)
@@ -22,6 +23,7 @@ export function DealReviewCard({ deal, onConfirm, onDiscard }: Props) {
       company_name: companyName,
       website_url: websiteUrl || null,
       one_liner: oneLiner || null,
+      sector: sector || null,
       raise_amount: raiseAmount ? parseFloat(raiseAmount) : null,
       currency: currency || null,
       priority,
@@ -55,6 +57,16 @@ export function DealReviewCard({ deal, onConfirm, onDiscard }: Props) {
           onChange={(e) => setOneLiner(e.target.value)}
           className="w-full px-2 py-1 border rounded text-sm"
         />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-sm font-medium text-gray-700">Sector</label>
+          <input
+            value={sector}
+            onChange={(e) => setSector(e.target.value)}
+            className="w-full px-2 py-1 border rounded text-sm"
+          />
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>

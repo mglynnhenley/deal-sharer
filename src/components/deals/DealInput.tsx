@@ -38,6 +38,7 @@ export function DealInput() {
       company_name: deal.company_name,
       website_url: deal.website_url,
       one_liner: deal.one_liner,
+      sector: deal.sector,
       raise_amount: deal.raise_amount,
       currency: deal.currency,
       priority: deal.priority,

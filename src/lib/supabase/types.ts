@@ -6,6 +6,7 @@ export type Deal = {
   one_liner: string | null
   raise_amount: number | null
   currency: string | null
+  sector: string | null
   priority: 1 | 2 | 3
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null

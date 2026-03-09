@@ -8,6 +8,7 @@ describe('parseDealsFromLLMResponse', () => {
         company_name: 'Jaipur Robotics',
         website_url: 'https://jaipurrobotics.com/',
         one_liner: 'AI detection of hazardous materials in mixed waste',
+        sector: 'Climate Tech',
         raise_amount: 4000000,
         currency: 'EUR',
       },
@@ -15,6 +16,7 @@ describe('parseDealsFromLLMResponse', () => {
         company_name: 'Polybot',
         website_url: 'https://polybot.eu/',
         one_liner: 'Greenhouse crop harvesting robotics',
+        sector: 'AgTech',
         raise_amount: 4000000,
         currency: 'EUR',
       },
@@ -24,7 +26,9 @@ describe('parseDealsFromLLMResponse', () => {
     expect(result).toHaveLength(2)
     expect(result[0].company_name).toBe('Jaipur Robotics')
     expect(result[0].raise_amount).toBe(4000000)
+    expect(result[0].sector).toBe('Climate Tech')
     expect(result[1].company_name).toBe('Polybot')
+    expect(result[1].sector).toBe('AgTech')
   })
 
   it('handles LLM output wrapped in markdown code block', () => {
@@ -33,6 +37,7 @@ describe('parseDealsFromLLMResponse', () => {
         company_name: 'Nerva AI',
         website_url: 'http://nerva-ai.com/',
         one_liner: 'Energy optimization for datacenters',
+        sector: 'Energy',
         raise_amount: null,
         currency: null,
       },

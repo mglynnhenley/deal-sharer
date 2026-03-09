@@ -8,60 +8,76 @@ type Props = {
 
 export function VoiceRecorder({ onTranscript }: Props) {
   const [recording, setRecording] = useState(false)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const [transcribing, setTranscribing] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
 
-  function startRecording() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Speech recognition not supported in this browser')
-      return
-    }
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      chunksRef.current = []
 
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    let transcript = ''
-
-    recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript + ' '
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
         }
       }
-    }
 
-    recognition.onend = () => {
-      setRecording(false)
-      if (transcript.trim()) {
-        onTranscript(transcript.trim())
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop())
+        const blob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType })
+        await transcribe(blob)
       }
-    }
 
-    recognition.onerror = () => {
-      setRecording(false)
+      mediaRecorderRef.current = mediaRecorder
+      mediaRecorder.start()
+      setRecording(true)
+    } catch {
+      alert('Could not access microphone')
     }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setRecording(true)
   }
 
   function stopRecording() {
-    recognitionRef.current?.stop()
+    mediaRecorderRef.current?.stop()
+    setRecording(false)
+  }
+
+  async function transcribe(blob: Blob) {
+    setTranscribing(true)
+    try {
+      const formData = new FormData()
+      formData.append('audio', blob)
+
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      if (data.text) {
+        onTranscript(data.text)
+      }
+    } catch {
+      alert('Transcription failed')
+    } finally {
+      setTranscribing(false)
+    }
   }
 
   return (
     <button
       onClick={recording ? stopRecording : startRecording}
+      disabled={transcribing}
       className={`px-4 py-2 rounded-md text-sm ${
         recording
           ? 'bg-red-600 text-white hover:bg-red-700'
-          : 'border hover:bg-gray-50'
+          : transcribing
+            ? 'border opacity-50 cursor-not-allowed'
+            : 'border hover:bg-gray-50'
       }`}
     >
-      {recording ? 'Stop Recording' : 'Record Voice'}
+      {recording ? 'Stop Recording' : transcribing ? 'Transcribing...' : 'Record Voice'}
     </button>
   )
 }

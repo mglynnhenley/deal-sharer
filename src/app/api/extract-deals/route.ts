@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { parseDealsFromLLMResponse, DEAL_EXTRACTION_PROMPT } from '@/lib/extraction/deals'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 export async function POST(request: NextRequest) {
   const { text } = await request.json()
@@ -11,22 +11,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'text field is required' }, { status: 400 })
   }
 
-  const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
     max_tokens: 4096,
     messages: [
       {
+        role: 'system',
+        content: DEAL_EXTRACTION_PROMPT,
+      },
+      {
         role: 'user',
-        content: `${DEAL_EXTRACTION_PROMPT}\n\nHere is the unstructured text:\n\n${text}`,
+        content: `Here is the unstructured text:\n\n${text}`,
       },
     ],
   })
 
-  const content = message.content[0]
-  if (content.type !== 'text') {
+  const content = completion.choices[0]?.message?.content
+  if (!content) {
     return NextResponse.json({ error: 'Unexpected response format' }, { status: 500 })
   }
 
-  const deals = parseDealsFromLLMResponse(content.text)
+  const deals = parseDealsFromLLMResponse(content)
   return NextResponse.json({ deals })
 }
