@@ -1,13 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { DealInput } from '@/components/deals/DealInput'
+import { DealFilters } from '@/components/deals/DealFilters'
 import type { Deal } from '@/lib/supabase/types'
 
-export default async function DealsPage() {
+export default async function DealsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>
+}) {
+  const { from, to } = await searchParams
   const supabase = await createClient()
-  const { data: deals } = await supabase
+
+  let query = supabase
     .from('deals')
     .select()
     .order('created_at', { ascending: false })
+
+  if (from) query = query.gte('created_at', `${from}T00:00:00`)
+  if (to) query = query.lte('created_at', `${to}T23:59:59`)
+
+  const { data: deals } = await query
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -20,6 +32,9 @@ export default async function DealsPage() {
 
       <section>
         <h2 className="text-lg font-semibold mb-3">All Deals</h2>
+        <div className="mb-4">
+          <DealFilters />
+        </div>
         {deals && deals.length > 0 ? (
           <DealList deals={deals as Deal[]} />
         ) : (
