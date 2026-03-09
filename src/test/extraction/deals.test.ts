@@ -1,0 +1,50 @@
+import { describe, it, expect } from 'vitest'
+import { parseDealsFromLLMResponse } from '@/lib/extraction/deals'
+
+describe('parseDealsFromLLMResponse', () => {
+  it('parses a JSON array of deals from LLM output', () => {
+    const llmOutput = JSON.stringify([
+      {
+        company_name: 'Jaipur Robotics',
+        website_url: 'https://jaipurrobotics.com/',
+        one_liner: 'AI detection of hazardous materials in mixed waste',
+        raise_amount: 4000000,
+        currency: 'EUR',
+      },
+      {
+        company_name: 'Polybot',
+        website_url: 'https://polybot.eu/',
+        one_liner: 'Greenhouse crop harvesting robotics',
+        raise_amount: 4000000,
+        currency: 'EUR',
+      },
+    ])
+
+    const result = parseDealsFromLLMResponse(llmOutput)
+    expect(result).toHaveLength(2)
+    expect(result[0].company_name).toBe('Jaipur Robotics')
+    expect(result[0].raise_amount).toBe(4000000)
+    expect(result[1].company_name).toBe('Polybot')
+  })
+
+  it('handles LLM output wrapped in markdown code block', () => {
+    const llmOutput = '```json\n' + JSON.stringify([
+      {
+        company_name: 'Nerva AI',
+        website_url: 'http://nerva-ai.com/',
+        one_liner: 'Energy optimization for datacenters',
+        raise_amount: null,
+        currency: null,
+      },
+    ]) + '\n```'
+
+    const result = parseDealsFromLLMResponse(llmOutput)
+    expect(result).toHaveLength(1)
+    expect(result[0].company_name).toBe('Nerva AI')
+  })
+
+  it('returns empty array for unparseable output', () => {
+    const result = parseDealsFromLLMResponse('not valid json at all')
+    expect(result).toEqual([])
+  })
+})
