@@ -7,6 +7,7 @@ create table deals (
   one_liner text,
   raise_amount numeric,
   currency text default 'EUR',
+  sector text,
   priority int not null check (priority in (1, 2, 3)),
   status text not null default 'active' check (status in ('active', 'passed', 'closed')),
   raw_source_text text
