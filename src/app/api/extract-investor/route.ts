@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { parseInvestorFromLLMResponse, INVESTOR_EXTRACTION_PROMPT } from '@/lib/extraction/investors'
+import { parseInvestorsFromLLMResponse, INVESTOR_EXTRACTION_PROMPT } from '@/lib/extraction/investors'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
@@ -13,16 +13,10 @@ export async function POST(request: NextRequest) {
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
-    max_tokens: 1024,
+    max_tokens: 4096,
     messages: [
-      {
-        role: 'system',
-        content: INVESTOR_EXTRACTION_PROMPT,
-      },
-      {
-        role: 'user',
-        content: `Here is the description:\n\n${text}`,
-      },
+      { role: 'system', content: INVESTOR_EXTRACTION_PROMPT },
+      { role: 'user', content: `Here is the description:\n\n${text}` },
     ],
   })
 
@@ -31,10 +25,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unexpected response format' }, { status: 500 })
   }
 
-  const investor = parseInvestorFromLLMResponse(content)
-  if (!investor) {
-    return NextResponse.json({ error: 'Could not extract investor details' }, { status: 422 })
-  }
-
-  return NextResponse.json({ investor })
+  const investors = parseInvestorsFromLLMResponse(content)
+  return NextResponse.json({ investors })
 }
