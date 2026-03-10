@@ -1,20 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import type { ExtractedInvestor } from '@/lib/extraction/investors'
-import { InvestorReviewCard } from './InvestorReviewCard'
-import { saveInvestor } from '@/app/investors/actions'
+import { saveInvestors } from '@/app/investors/actions'
 
 export function InvestorInput() {
   const [text, setText] = useState('')
-  const [extracted, setExtracted] = useState<ExtractedInvestor | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   async function handleExtract() {
     if (!text.trim()) return
     setLoading(true)
-    setError(null)
+    setMessage(null)
 
     try {
       const res = await fetch('/api/extract-investor', {
@@ -24,64 +21,58 @@ export function InvestorInput() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setExtracted(data.investor)
+
+      if (!data.investors || data.investors.length === 0) {
+        setMessage({ type: 'error', text: 'No investors found in that text.' })
+        return
+      }
+
+      const investorsToSave = data.investors.map((inv: Record<string, unknown>) => ({
+        contact_name: inv.contact_name,
+        fund_name: inv.fund_name || null,
+        email: inv.email || null,
+        linkedin_url: inv.linkedin_url || null,
+        sectors: Array.isArray(inv.sectors) ? inv.sectors : [],
+        thesis_description: inv.thesis_description || null,
+        priority_threshold: 3 as const,
+        sharing_frequency: 'weekly' as const,
+        raw_source_text: text,
+      }))
+
+      const result = await saveInvestors(investorsToSave)
+      if (result.error) throw new Error(result.error)
+
+      setMessage({ type: 'success', text: `${investorsToSave.length} investor${investorsToSave.length > 1 ? 's' : ''} added` })
+      setText('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Extraction failed')
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Extraction failed' })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleConfirm(investor: ExtractedInvestor & {
-    priority_threshold: 1 | 2 | 3
-    sharing_frequency: 'weekly' | 'bi-weekly' | 'monthly'
-  }) {
-    const result = await saveInvestor({
-      contact_name: investor.contact_name,
-      fund_name: investor.fund_name,
-      email: investor.email,
-      linkedin_url: investor.linkedin_url,
-      sectors: investor.sectors,
-      priority_threshold: investor.priority_threshold,
-      sharing_frequency: investor.sharing_frequency,
-      thesis_description: investor.thesis_description,
-      raw_source_text: text,
-    })
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-    setExtracted(null)
-    setText('')
-  }
-
   return (
-    <div className="space-y-4">
-      <div>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Describe an investor... e.g. 'Sarah at Northzone, they do seed in Europe, focus on dev tools'"
-          rows={3}
-          className="w-full px-3 py-2 border rounded-md text-sm"
-        />
+    <div className="space-y-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Describe investors... e.g. 'Ana @ Nauta, Bodi @ Heartcore, Oskar @ Project A'"
+        rows={4}
+        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-black/20 placeholder:text-secondary"
+      />
+      <div className="flex items-center gap-2">
         <button
           onClick={handleExtract}
           disabled={loading || !text.trim()}
-          className="mt-2 px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-gray-800 disabled:opacity-50"
+          className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40"
         >
-          {loading ? 'Extracting...' : 'Extract Investor'}
+          {loading ? 'Extracting...' : 'Extract Investors'}
         </button>
       </div>
-
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-
-      {extracted && (
-        <InvestorReviewCard
-          investor={extracted}
-          onConfirm={handleConfirm}
-          onDiscard={() => setExtracted(null)}
-        />
+      {message && (
+        <p className={`text-sm ${message.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+          {message.text}
+        </p>
       )}
     </div>
   )
