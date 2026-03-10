@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import type { Deal } from '@/lib/supabase/types'
 import { EditableField } from '@/components/EditableField'
 import { updateDeal, deleteDeal } from '@/app/deals/actions'
@@ -110,12 +111,9 @@ function DealRow({ deal }: { deal: Deal }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-base text-foreground">
-              <EditableField
-                value={deal.company_name}
-                onSave={(v) => handleUpdate('company_name', v)}
-              />
-            </span>
+            <Link href={`/deals/${deal.id}`} className="font-semibold text-base text-foreground hover:underline">
+              {deal.company_name}
+            </Link>
             <EditableField
               value={String(deal.priority)}
               onSave={(v) => handleUpdate('priority', v)}
