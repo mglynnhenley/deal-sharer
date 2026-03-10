@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { DealInput } from '@/components/deals/DealInput'
 import { DealList } from '@/components/deals/DealList'
@@ -35,7 +36,9 @@ export default async function Home({
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-      <TabSwitcher activeTab={activeTab} />
+      <Suspense>
+        <TabSwitcher activeTab={activeTab} />
+      </Suspense>
 
       {activeTab === 'deals' ? (
         <>
