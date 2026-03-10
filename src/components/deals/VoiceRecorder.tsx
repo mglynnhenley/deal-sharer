@@ -19,9 +19,7 @@ export function VoiceRecorder({ onTranscript }: Props) {
       chunksRef.current = []
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data)
-        }
+        if (e.data.size > 0) chunksRef.current.push(e.data)
       }
 
       mediaRecorder.onstop = async () => {
@@ -48,16 +46,10 @@ export function VoiceRecorder({ onTranscript }: Props) {
     try {
       const formData = new FormData()
       formData.append('audio', blob)
-
-      const res = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      })
+      const res = await fetch('/api/transcribe', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      if (data.text) {
-        onTranscript(data.text)
-      }
+      if (data.text) onTranscript(data.text)
     } catch {
       alert('Transcription failed')
     } finally {
@@ -69,12 +61,12 @@ export function VoiceRecorder({ onTranscript }: Props) {
     <button
       onClick={recording ? stopRecording : startRecording}
       disabled={transcribing}
-      className={`px-4 py-2 rounded-md text-sm ${
+      className={`px-4 py-2 rounded-lg text-sm font-medium ${
         recording
           ? 'bg-red-600 text-white hover:bg-red-700'
           : transcribing
-            ? 'border opacity-50 cursor-not-allowed'
-            : 'border hover:bg-gray-50'
+            ? 'border border-border opacity-40 cursor-not-allowed'
+            : 'border border-border text-foreground hover:bg-black/5'
       }`}
     >
       {recording ? 'Stop Recording' : transcribing ? 'Transcribing...' : 'Record Voice'}
