@@ -1,21 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import type { ExtractedDeal } from '@/lib/extraction/deals'
-import { DealReviewCard } from './DealReviewCard'
-import { saveDeal } from '@/app/deals/actions'
+import { saveDeals } from '@/app/deals/actions'
 import { VoiceRecorder } from './VoiceRecorder'
 
 export function DealInput() {
   const [text, setText] = useState('')
-  const [extractedDeals, setExtractedDeals] = useState<ExtractedDeal[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   async function handleExtract() {
     if (!text.trim()) return
     setLoading(true)
-    setError(null)
+    setMessage(null)
 
     try {
       const res = await fetch('/api/extract-deals', {
@@ -25,75 +22,59 @@ export function DealInput() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setExtractedDeals(data.deals)
+
+      if (!data.deals || data.deals.length === 0) {
+        setMessage({ type: 'error', text: 'No deals found in that text.' })
+        return
+      }
+
+      const dealsToSave = data.deals.map((d: Record<string, unknown>) => ({
+        company_name: d.company_name,
+        website_url: d.website_url || null,
+        one_liner: d.one_liner || null,
+        sector: d.sector || null,
+        raise_amount: d.raise_amount || null,
+        currency: d.currency || 'EUR',
+        priority: 3,
+        status: 'active' as const,
+        raw_source_text: text,
+      }))
+
+      const result = await saveDeals(dealsToSave)
+      if (result.error) throw new Error(result.error)
+
+      setMessage({ type: 'success', text: `${dealsToSave.length} deal${dealsToSave.length > 1 ? 's' : ''} added` })
+      setText('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Extraction failed')
+      setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Extraction failed' })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleConfirm(deal: ExtractedDeal & { priority: 1 | 2 | 3 }) {
-    const result = await saveDeal({
-      company_name: deal.company_name,
-      website_url: deal.website_url,
-      one_liner: deal.one_liner,
-      sector: deal.sector,
-      raise_amount: deal.raise_amount,
-      currency: deal.currency,
-      priority: deal.priority,
-      status: 'active',
-      raw_source_text: text,
-    })
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-    setExtractedDeals((prev) => prev.filter((d) => d.company_name !== deal.company_name))
-  }
-
-  function handleDiscard(companyName: string) {
-    setExtractedDeals((prev) => prev.filter((d) => d.company_name !== companyName))
-  }
-
   return (
-    <div className="space-y-4">
-      <div>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Paste deal info here - transcripts, emails, notes..."
-          rows={6}
-          className="w-full px-3 py-2 border rounded-md text-sm"
-        />
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={handleExtract}
-            disabled={loading || !text.trim()}
-            className="px-4 py-2 bg-black text-white rounded-md text-sm hover:bg-gray-800 disabled:opacity-50"
-          >
-            {loading ? 'Extracting...' : 'Extract Deals'}
-          </button>
-          <VoiceRecorder onTranscript={(t) => setText((prev) => prev ? prev + '\n' + t : t)} />
-        </div>
+    <div className="space-y-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Paste deal info here — transcripts, emails, notes..."
+        rows={4}
+        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-black/20 placeholder:text-secondary"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleExtract}
+          disabled={loading || !text.trim()}
+          className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40"
+        >
+          {loading ? 'Extracting...' : 'Extract Deals'}
+        </button>
+        <VoiceRecorder onTranscript={(t) => setText((prev) => prev ? prev + '\n' + t : t)} />
       </div>
-
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-
-      {extractedDeals.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-medium text-sm text-gray-600">
-            {extractedDeals.length} deal(s) extracted - review and confirm:
-          </h3>
-          {extractedDeals.map((deal) => (
-            <DealReviewCard
-              key={deal.company_name}
-              deal={deal}
-              onConfirm={handleConfirm}
-              onDiscard={() => handleDiscard(deal.company_name)}
-            />
-          ))}
-        </div>
+      {message && (
+        <p className={`text-sm ${message.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+          {message.text}
+        </p>
       )}
     </div>
   )
