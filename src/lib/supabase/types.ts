@@ -10,6 +10,7 @@ export type Deal = {
   priority: 1 | 2 | 3
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null
+  notes_summary: string | null
 }
 
 export type Investor = {
@@ -34,5 +35,14 @@ export type ShareRecord = {
   batch_id: string
 }
 
+export type DealNote = {
+  id: string
+  deal_id: string
+  content: string
+  summary: string | null
+  created_at: string
+}
+
 export type DealInsert = Omit<Deal, 'id' | 'created_at'>
+export type DealNoteInsert = Omit<DealNote, 'id' | 'created_at'>
 export type InvestorInsert = Omit<Investor, 'id' | 'created_at'>
