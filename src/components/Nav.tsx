@@ -5,43 +5,42 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/app/login/actions'
 
 const links = [
-  { href: '/', param: 'deals', label: 'Deals' },
+  { href: '/', label: 'Deals' },
   { href: '/', param: 'investors', label: 'Investors' },
-  { href: '/share', label: 'Share Lists' },
+  { href: '/', param: 'share', label: 'Share Lists' },
   { href: '/history', label: 'History' },
 ]
 
 export function Nav() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'deals'
+  const currentTab = searchParams.get('tab') || ''
 
-  if (pathname === '/login') return null
+  if (pathname === '/login' || pathname === '/signup') return null
 
-  function isActive(link: typeof links[number]) {
-    if (link.param) {
-      return pathname === '/' && currentTab === link.param
-    }
+  function isActive(link: (typeof links)[number]) {
+    if (link.param) return pathname === '/' && currentTab === link.param
+    if (link.href === '/') return pathname === '/' && !currentTab
     return pathname.startsWith(link.href)
   }
 
-  function getHref(link: typeof links[number]) {
+  function getHref(link: (typeof links)[number]) {
     if (link.param) return `/?tab=${link.param}`
     return link.href
   }
 
   return (
-    <nav className="border-b border-border bg-surface">
-      <div className="max-w-4xl mx-auto px-6 flex items-center justify-between h-14">
-        <div className="flex items-center gap-6">
-          <span className="font-bold text-foreground">Deal Sharer</span>
+    <nav className="border-b border-border bg-surface sticky top-0 z-50">
+      <div className="max-w-5xl mx-auto px-6 flex items-center justify-between h-14">
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-foreground mr-4 tracking-tight">Deal Sharer</span>
           {links.map((link) => (
             <Link
               key={link.label}
               href={getHref(link)}
-              className={`text-sm ${
+              className={`text-sm px-3 py-1.5 rounded-md ${
                 isActive(link)
-                  ? 'text-foreground font-medium'
+                  ? 'text-accent font-medium bg-accent-light'
                   : 'text-secondary hover:text-foreground'
               }`}
             >
