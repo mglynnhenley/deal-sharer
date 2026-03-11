@@ -1,8 +1,35 @@
-export type Deal = {
+/** Fund — one per email domain (or one per personal-email user) */
+export type Fund = {
+  id: string
+  domain: string | null
+  is_personal: boolean
+  created_at: string
+}
+
+/** User profile — links auth user to fund */
+export type Profile = {
+  id: string
+  fund_id: string
+  email_domain: string
+  created_at: string
+}
+
+/** Shared deal record — visible to all fund members */
+export type SharedDeal = {
   id: string
   created_at: string
+  created_by: string
+  fund_id: string
   company_name: string
   website_url: string | null
+  linkedin_url: string | null
+  one_liner: string | null
+}
+
+/** Per-user deal metadata */
+export type UserDeal = {
+  id: string
+  deal_id: string
   one_liner: string | null
   raise_amount: number | null
   currency: string | null
@@ -10,7 +37,24 @@ export type Deal = {
   priority: 1 | 2 | 3
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null
-  notes_summary: string | null
+}
+
+/** Combined deal view used by UI components */
+export type Deal = {
+  id: string
+  created_at: string
+  company_name: string
+  website_url: string | null
+  linkedin_url: string | null
+  user_deal_id: string | null
+  one_liner: string | null
+  raise_amount: number | null
+  currency: string | null
+  sector: string | null
+  priority: 1 | 2 | 3
+  status: 'active' | 'passed' | 'closed'
+  raw_source_text: string | null
+  is_in_my_list: boolean
 }
 
 export type Investor = {
@@ -19,6 +63,7 @@ export type Investor = {
   contact_name: string
   fund_name: string | null
   email: string | null
+  phone: string | null
   linkedin_url: string | null
   priority_threshold: 1 | 2 | 3
   sharing_frequency: 'weekly' | 'bi-weekly' | 'monthly'
@@ -35,14 +80,18 @@ export type ShareRecord = {
   batch_id: string
 }
 
-export type DealNote = {
-  id: string
-  deal_id: string
-  content: string
-  summary: string | null
-  created_at: string
+/** Input for saving a new deal (before splitting into shared + per-user) */
+export type DealInsert = {
+  company_name: string
+  website_url: string | null
+  linkedin_url: string | null
+  one_liner: string | null
+  raise_amount: number | null
+  currency: string | null
+  sector: string | null
+  priority: 1 | 2 | 3
+  status: 'active' | 'passed' | 'closed'
+  raw_source_text: string | null
 }
 
-export type DealInsert = Omit<Deal, 'id' | 'created_at'>
-export type DealNoteInsert = Omit<DealNote, 'id' | 'created_at'>
 export type InvestorInsert = Omit<Investor, 'id' | 'created_at'>
