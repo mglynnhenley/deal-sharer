@@ -31,6 +31,7 @@ export function InvestorInput() {
         contact_name: inv.contact_name,
         fund_name: inv.fund_name || null,
         email: inv.email || null,
+        phone: inv.phone || null,
         linkedin_url: inv.linkedin_url || null,
         sectors: Array.isArray(inv.sectors) ? inv.sectors : [],
         thesis_description: inv.thesis_description || null,
@@ -42,7 +43,10 @@ export function InvestorInput() {
       const result = await saveInvestors(investorsToSave)
       if (result.error) throw new Error(result.error)
 
-      setMessage({ type: 'success', text: `${investorsToSave.length} investor${investorsToSave.length > 1 ? 's' : ''} added` })
+      setMessage({
+        type: 'success',
+        text: `${investorsToSave.length} investor${investorsToSave.length > 1 ? 's' : ''} added`,
+      })
       setText('')
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Extraction failed' })
@@ -58,19 +62,17 @@ export function InvestorInput() {
         onChange={(e) => setText(e.target.value)}
         placeholder="Describe investors... e.g. 'Ana @ Nauta, Bodi @ Heartcore, Oskar @ Project A'"
         rows={4}
-        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-black/20 placeholder:text-secondary"
+        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
       />
-      <div className="flex items-center gap-2">
-        <button
-          onClick={handleExtract}
-          disabled={loading || !text.trim()}
-          className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40"
-        >
-          {loading ? 'Extracting...' : 'Extract Investors'}
-        </button>
-      </div>
+      <button
+        onClick={handleExtract}
+        disabled={loading || !text.trim()}
+        className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
+      >
+        {loading ? 'Extracting...' : 'Extract Investors'}
+      </button>
       {message && (
-        <p className={`text-sm ${message.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+        <p className={`text-sm ${message.type === 'success' ? 'text-emerald-600' : 'text-accent'}`}>
           {message.text}
         </p>
       )}

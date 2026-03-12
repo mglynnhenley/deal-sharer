@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { saveDeals } from '@/app/deals/actions'
-import { VoiceRecorder } from './VoiceRecorder'
+import { VoiceRecorder } from '@/components/VoiceRecorder'
 
 export function DealInput() {
   const [text, setText] = useState('')
@@ -31,6 +31,7 @@ export function DealInput() {
       const dealsToSave = data.deals.map((d: Record<string, unknown>) => ({
         company_name: d.company_name,
         website_url: d.website_url || null,
+        linkedin_url: d.linkedin_url || null,
         one_liner: d.one_liner || null,
         sector: d.sector || null,
         raise_amount: d.raise_amount || null,
@@ -43,7 +44,10 @@ export function DealInput() {
       const result = await saveDeals(dealsToSave)
       if (result.error) throw new Error(result.error)
 
-      setMessage({ type: 'success', text: `${dealsToSave.length} deal${dealsToSave.length > 1 ? 's' : ''} added` })
+      const parts: string[] = []
+      if (result.added) parts.push(`${result.added} new`)
+      if (result.linked) parts.push(`${result.linked} matched existing`)
+      setMessage({ type: 'success', text: parts.join(', ') || 'Deals processed' })
       setText('')
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Extraction failed' })
@@ -59,20 +63,20 @@ export function DealInput() {
         onChange={(e) => setText(e.target.value)}
         placeholder="Paste deal info here — transcripts, emails, notes..."
         rows={4}
-        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-black/20 placeholder:text-secondary"
+        className="w-full px-3 py-2.5 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
       />
       <div className="flex items-center gap-2">
         <button
           onClick={handleExtract}
           disabled={loading || !text.trim()}
-          className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40"
+          className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
         >
           {loading ? 'Extracting...' : 'Extract Deals'}
         </button>
-        <VoiceRecorder onTranscript={(t) => setText((prev) => prev ? prev + '\n' + t : t)} />
+        <VoiceRecorder onTranscript={(t) => setText((prev) => (prev ? prev + '\n' + t : t))} />
       </div>
       {message && (
-        <p className={`text-sm ${message.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+        <p className={`text-sm ${message.type === 'success' ? 'text-emerald-600' : 'text-accent'}`}>
           {message.text}
         </p>
       )}

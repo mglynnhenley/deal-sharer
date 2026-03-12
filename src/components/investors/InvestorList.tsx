@@ -16,10 +16,10 @@ const frequencyOptions = [
   { value: 'monthly', label: 'Monthly' },
 ]
 
-function thresholdBadgeClass(t: number) {
-  if (t === 1) return 'bg-amber-100 text-amber-900'
-  if (t === 2) return 'bg-gray-100 text-gray-800'
-  return 'bg-gray-50 text-gray-600'
+function thresholdBadge(t: number) {
+  if (t === 1) return 'bg-amber-50 text-amber-800'
+  if (t === 2) return 'bg-stone-100 text-stone-700'
+  return 'bg-stone-50 text-stone-500'
 }
 
 export function InvestorList({ investors }: { investors: Investor[] }) {
@@ -40,7 +40,8 @@ function InvestorRow({ investor }: { investor: Investor }) {
   async function handleUpdate(field: string, value: string) {
     let parsed: string | number | string[] | null = value || null
     if (field === 'priority_threshold') parsed = parseInt(value)
-    if (field === 'sectors') parsed = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
+    if (field === 'sectors')
+      parsed = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
     return updateInvestor(investor.id, field, parsed)
   }
 
@@ -49,7 +50,7 @@ function InvestorRow({ investor }: { investor: Investor }) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-base text-foreground">
+            <span className="font-semibold text-foreground">
               <EditableField
                 value={investor.contact_name}
                 onSave={(v) => handleUpdate('contact_name', v)}
@@ -57,10 +58,7 @@ function InvestorRow({ investor }: { investor: Investor }) {
             </span>
             {investor.fund_name && (
               <span className="text-sm text-secondary">
-                @ <EditableField
-                  value={investor.fund_name}
-                  onSave={(v) => handleUpdate('fund_name', v)}
-                />
+                @ <EditableField value={investor.fund_name} onSave={(v) => handleUpdate('fund_name', v)} />
               </span>
             )}
             <EditableField
@@ -68,7 +66,7 @@ function InvestorRow({ investor }: { investor: Investor }) {
               onSave={(v) => handleUpdate('priority_threshold', v)}
               type="select"
               options={thresholdOptions}
-              className={`text-xs font-medium px-2 py-0.5 rounded ${thresholdBadgeClass(investor.priority_threshold)}`}
+              className={`text-xs font-medium px-2 py-0.5 rounded ${thresholdBadge(investor.priority_threshold)}`}
             />
             <EditableField
               value={investor.sharing_frequency}
@@ -78,46 +76,39 @@ function InvestorRow({ investor }: { investor: Investor }) {
               className="text-xs text-secondary"
             />
           </div>
-          {investor.sectors && investor.sectors.length > 0 && (
-            <div className="flex gap-1 mt-1.5 flex-wrap">
-              {investor.sectors.map((s) => (
-                <span key={s} className="text-xs font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-800">
-                  {s}
-                </span>
-              ))}
-            </div>
-          )}
-          {investor.thesis_description && (
-            <div className="mt-1.5">
+          <div className="mt-1.5">
+            <span className="text-xs text-accent">
               <EditableField
-                value={investor.thesis_description}
-                onSave={(v) => handleUpdate('thesis_description', v)}
-                placeholder="Add thesis notes..."
-                className="text-sm text-secondary"
+                value={investor.sectors?.join(', ') || ''}
+                onSave={(v) => handleUpdate('sectors', v)}
+                placeholder="Add sectors (comma-separated)..."
+                className="text-xs"
               />
-            </div>
-          )}
-          <div className="flex gap-3 mt-1.5">
-            {investor.email && (
-              <span className="text-sm text-secondary">
-                <EditableField
-                  value={investor.email}
-                  onSave={(v) => handleUpdate('email', v)}
-                  placeholder="Add email..."
-                />
-              </span>
-            )}
-            {investor.linkedin_url && (
-              <a href={investor.linkedin_url} target="_blank" rel="noopener noreferrer"
-                 className="text-sm text-blue-700 hover:underline">
-                LinkedIn
-              </a>
-            )}
+            </span>
+          </div>
+          <div className="mt-1">
+            <EditableField
+              value={investor.thesis_description || ''}
+              onSave={(v) => handleUpdate('thesis_description', v)}
+              placeholder="Add thesis notes..."
+              className="text-sm text-secondary"
+            />
+          </div>
+          <div className="flex gap-3 mt-1.5 flex-wrap">
+            <span className="text-sm text-secondary">
+              <EditableField value={investor.email || ''} onSave={(v) => handleUpdate('email', v)} placeholder="Add email..." />
+            </span>
+            <span className="text-sm text-secondary">
+              <EditableField value={investor.phone || ''} onSave={(v) => handleUpdate('phone', v)} placeholder="Add phone..." />
+            </span>
+            <span className="text-sm text-accent">
+              <EditableField value={investor.linkedin_url || ''} onSave={(v) => handleUpdate('linkedin_url', v)} placeholder="Add LinkedIn URL..." />
+            </span>
           </div>
         </div>
         <button
           onClick={async () => { if (confirm('Delete this investor?')) await deleteInvestor(investor.id) }}
-          className="text-sm text-secondary hover:text-red-600 shrink-0"
+          className="text-sm text-secondary hover:text-accent shrink-0"
         >
           Delete
         </button>

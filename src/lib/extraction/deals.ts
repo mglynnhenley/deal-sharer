@@ -1,6 +1,7 @@
 export type ExtractedDeal = {
   company_name: string
   website_url: string | null
+  linkedin_url: string | null
   one_liner: string | null
   sector: string | null
   raise_amount: number | null
@@ -21,6 +22,7 @@ export function parseDealsFromLLMResponse(output: string): ExtractedDeal[] {
     return parsed.map((d: Record<string, unknown>) => ({
       company_name: String(d.company_name || ''),
       website_url: d.website_url ? String(d.website_url) : null,
+      linkedin_url: d.linkedin_url ? String(d.linkedin_url) : null,
       one_liner: d.one_liner ? String(d.one_liner) : null,
       sector: d.sector ? String(d.sector) : null,
       raise_amount: typeof d.raise_amount === 'number' ? d.raise_amount : null,
@@ -34,9 +36,10 @@ export function parseDealsFromLLMResponse(output: string): ExtractedDeal[] {
 export const DEAL_EXTRACTION_PROMPT = `You are a deal extraction assistant. Given unstructured text about investment deals, extract each deal into a structured JSON array.
 
 For each deal, extract:
-- company_name: the company name
+- company_name: the company name. If no company name is given, use the founder/CEO name instead.
 - website_url: the company website URL (if mentioned)
-- one_liner: a concise one-line description of what the company does
+- linkedin_url: a LinkedIn profile URL for the founder/CEO (if mentioned)
+- one_liner: a concise one-line description that includes what the company does, plus any notable context like geography, raise amount, founder background (e.g. ex-YC, serial founder, ex-Google), or other standout details — but only if mentioned. Keep it punchy and useful.
 - sector: the industry sector (e.g., "AI/ML", "Fintech", "Climate Tech", "SaaS", "Robotics", "Healthcare", "Energy", "AgTech", etc.), inferred from the description
 - raise_amount: the amount being raised as a number (e.g., 4000000 for 4M), or null if not mentioned
 - currency: the currency (EUR, USD, GBP, etc.), or null if not mentioned
@@ -48,7 +51,8 @@ Example output:
   {
     "company_name": "ExampleCo",
     "website_url": "https://example.com",
-    "one_liner": "AI-powered widget maker",
+    "linkedin_url": "https://linkedin.com/in/johndoe",
+    "one_liner": "Berlin-based AI-powered widget maker, raising 5M EUR. Serial founder, ex-Google.",
     "sector": "AI/ML",
     "raise_amount": 5000000,
     "currency": "EUR"

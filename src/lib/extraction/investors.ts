@@ -2,6 +2,7 @@ export type ExtractedInvestor = {
   contact_name: string
   fund_name: string | null
   email: string | null
+  phone: string | null
   linkedin_url: string | null
   sectors: string[]
   thesis_description: string | null
@@ -23,6 +24,7 @@ export function parseInvestorsFromLLMResponse(output: string): ExtractedInvestor
         contact_name: String(p.contact_name),
         fund_name: p.fund_name ? String(p.fund_name) : null,
         email: p.email ? String(p.email) : null,
+        phone: p.phone ? String(p.phone) : null,
         linkedin_url: p.linkedin_url ? String(p.linkedin_url) : null,
         sectors: Array.isArray(p.sectors) ? p.sectors.map(String) : [],
         thesis_description: p.thesis_description ? String(p.thesis_description) : null,
@@ -38,6 +40,7 @@ For each investor, extract:
 - contact_name: the person's name
 - fund_name: the fund or firm name (if mentioned)
 - email: their email address (if mentioned)
+- phone: their phone number (if mentioned)
 - linkedin_url: their LinkedIn profile URL (if mentioned)
 - sectors: an array of sector interests (e.g., ["AI/ML", "SaaS"]). Empty array if not mentioned.
 - thesis_description: a summary of their investment thesis (if mentioned)
@@ -50,6 +53,7 @@ Example output:
     "contact_name": "Sarah",
     "fund_name": "Northzone",
     "email": null,
+    "phone": null,
     "linkedin_url": null,
     "sectors": ["AI/ML", "Developer Tools"],
     "thesis_description": "Seed/Series A in Europe"
