@@ -33,10 +33,10 @@ export function DealInput() {
         website_url: d.website_url || null,
         linkedin_url: d.linkedin_url || null,
         one_liner: d.one_liner || null,
-        sector: d.sector || null,
+        sectors: Array.isArray(d.sectors) ? d.sectors : d.sector ? [String(d.sector)] : [],
+        stage: d.stage || null,
         raise_amount: d.raise_amount || null,
         currency: d.currency || 'EUR',
-        priority: 3,
         status: 'active' as const,
         raw_source_text: text,
       }))

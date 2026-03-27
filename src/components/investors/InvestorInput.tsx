@@ -34,8 +34,8 @@ export function InvestorInput() {
         phone: inv.phone || null,
         linkedin_url: inv.linkedin_url || null,
         sectors: Array.isArray(inv.sectors) ? inv.sectors : [],
+        stages: Array.isArray(inv.stages) ? inv.stages : [],
         thesis_description: inv.thesis_description || null,
-        priority_threshold: 3 as const,
         sharing_frequency: 'weekly' as const,
         raw_source_text: text,
       }))

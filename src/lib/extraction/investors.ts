@@ -1,3 +1,5 @@
+import { DEAL_STAGES } from '@/lib/supabase/types'
+
 export type ExtractedInvestor = {
   contact_name: string
   fund_name: string | null
@@ -5,6 +7,7 @@ export type ExtractedInvestor = {
   phone: string | null
   linkedin_url: string | null
   sectors: string[]
+  stages: string[]
   thesis_description: string | null
 }
 
@@ -27,6 +30,9 @@ export function parseInvestorsFromLLMResponse(output: string): ExtractedInvestor
         phone: p.phone ? String(p.phone) : null,
         linkedin_url: p.linkedin_url ? String(p.linkedin_url) : null,
         sectors: Array.isArray(p.sectors) ? p.sectors.map(String) : [],
+        stages: Array.isArray(p.stages)
+          ? p.stages.map(String).filter((s) => (DEAL_STAGES as readonly string[]).includes(s))
+          : [],
         thesis_description: p.thesis_description ? String(p.thesis_description) : null,
       }))
   } catch {
@@ -43,6 +49,7 @@ For each investor, extract:
 - phone: their phone number (if mentioned)
 - linkedin_url: their LinkedIn profile URL (if mentioned)
 - sectors: an array of sector interests (e.g., ["AI/ML", "SaaS"]). Empty array if not mentioned.
+- stages: an array of investment stages they focus on. Valid values: "pre-seed", "seed", "series-a", "series-b", "series-c", "growth". Infer from context: "early stage" means ["pre-seed", "seed"], "growth" means ["series-b", "series-c", "growth"], "seed to series A" means ["seed", "series-a"]. Empty array if not mentioned or unclear.
 - thesis_description: a summary of their investment thesis (if mentioned)
 
 Return ONLY a JSON array of objects. No other text.
@@ -56,6 +63,7 @@ Example output:
     "phone": null,
     "linkedin_url": null,
     "sectors": ["AI/ML", "Developer Tools"],
-    "thesis_description": "Seed/Series A in Europe"
+    "stages": ["seed", "series-a"],
+    "thesis_description": "Seed/Series A in Europe, focused on dev tools and AI"
   }
 ]`

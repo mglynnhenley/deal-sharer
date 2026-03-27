@@ -1,9 +1,12 @@
+import { DEAL_STAGES } from '@/lib/supabase/types'
+
 export type ExtractedDeal = {
   company_name: string
   website_url: string | null
   linkedin_url: string | null
   one_liner: string | null
-  sector: string | null
+  sectors: string[]
+  stage: string | null
   raise_amount: number | null
   currency: string | null
 }
@@ -24,7 +27,15 @@ export function parseDealsFromLLMResponse(output: string): ExtractedDeal[] {
       website_url: d.website_url ? String(d.website_url) : null,
       linkedin_url: d.linkedin_url ? String(d.linkedin_url) : null,
       one_liner: d.one_liner ? String(d.one_liner) : null,
-      sector: d.sector ? String(d.sector) : null,
+      sectors: Array.isArray(d.sectors)
+        ? d.sectors.map(String)
+        : d.sector
+          ? [String(d.sector)]
+          : [],
+      stage:
+        typeof d.stage === 'string' && (DEAL_STAGES as readonly string[]).includes(d.stage)
+          ? d.stage
+          : null,
       raise_amount: typeof d.raise_amount === 'number' ? d.raise_amount : null,
       currency: d.currency ? String(d.currency) : null,
     }))
@@ -40,7 +51,8 @@ For each deal, extract:
 - website_url: the company website URL (if mentioned)
 - linkedin_url: a LinkedIn profile URL for the founder/CEO (if mentioned)
 - one_liner: a concise one-line description that includes what the company does, plus any notable context like geography, raise amount, founder background (e.g. ex-YC, serial founder, ex-Google), or other standout details — but only if mentioned. Keep it punchy and useful.
-- sector: the industry sector (e.g., "AI/ML", "Fintech", "Climate Tech", "SaaS", "Robotics", "Healthcare", "Energy", "AgTech", etc.), inferred from the description
+- sectors: an array of applicable industry sectors (e.g., ["AI/ML", "Developer Tools"]). Common sectors: "AI/ML", "Fintech", "Climate Tech", "SaaS", "Robotics", "Healthcare", "Energy", "AgTech", "Deep Tech", "Consumer", "Marketplace", "Biotech", "Defence", "Cybersecurity", "EdTech", "PropTech". Infer from the description.
+- stage: the investment stage, one of: "pre-seed", "seed", "series-a", "series-b", "series-c", "growth". Infer from context: <500K is likely pre-seed, 500K-3M is likely pre-seed/seed, 3M-8M is likely seed, 8M-20M is likely series-a, 20M-50M is likely series-b, 50M+ is likely series-c or growth. Use null if not determinable.
 - raise_amount: the amount being raised as a number (e.g., 4000000 for 4M), or null if not mentioned
 - currency: the currency (EUR, USD, GBP, etc.), or null if not mentioned
 
@@ -53,7 +65,8 @@ Example output:
     "website_url": "https://example.com",
     "linkedin_url": "https://linkedin.com/in/johndoe",
     "one_liner": "Berlin-based AI-powered widget maker, raising 5M EUR. Serial founder, ex-Google.",
-    "sector": "AI/ML",
+    "sectors": ["AI/ML", "SaaS"],
+    "stage": "seed",
     "raise_amount": 5000000,
     "currency": "EUR"
   }

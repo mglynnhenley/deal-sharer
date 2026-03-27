@@ -5,7 +5,7 @@ type ShareRecordWithDetails = {
   id: string
   created_at: string
   batch_id: string
-  deals: { company_name: string; website_url: string | null; linkedin_url: string | null; user_deals: { one_liner: string | null }[] }
+  deals: { company_name: string; website_url: string | null; linkedin_url: string | null; one_liner: string | null }
   investors: { contact_name: string; fund_name: string | null }
 }
 
@@ -31,7 +31,7 @@ export default async function HistoryPage({
 
   let query = supabase
     .from('share_records')
-    .select('id, created_at, batch_id, deals (company_name, website_url, linkedin_url, user_deals(one_liner)), investors (contact_name, fund_name)')
+    .select('id, created_at, batch_id, deals (company_name, website_url, linkedin_url, one_liner), investors (contact_name, fund_name)')
     .order('created_at', { ascending: false })
     .gte('created_at', `${from}T00:00:00`)
     .lte('created_at', `${to}T23:59:59`)
@@ -43,7 +43,7 @@ export default async function HistoryPage({
   const batchMap = new Map<string, { date: string; investor: string; deals: string[] }>()
   for (const r of (records || []) as unknown as ShareRecordWithDetails[]) {
     const existing = batchMap.get(r.batch_id)
-    const oneLiner = r.deals.user_deals[0]?.one_liner
+    const oneLiner = r.deals.one_liner
     const links = [r.deals.website_url, r.deals.linkedin_url].filter(Boolean).join(', ')
     const dealText = `${r.deals.company_name}${oneLiner ? ' - ' + oneLiner : ''}${links ? ' (' + links + ')' : ''}`
     if (existing) {

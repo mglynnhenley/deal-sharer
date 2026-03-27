@@ -32,7 +32,10 @@ export function EditableField({
     if (draft === value) return
     setSaving(true)
     const result = await onSave(draft)
-    if (result.error) setDraft(value)
+    if (result.error) {
+      alert(result.error)
+      setDraft(value)
+    }
     setSaving(false)
   }
 
@@ -46,7 +49,22 @@ export function EditableField({
     if (type === 'select' && options) {
       return (
         <select ref={inputRef as React.RefObject<HTMLSelectElement>} value={draft}
-          onChange={(e) => setDraft(e.target.value)} onBlur={handleBlur} onKeyDown={handleKeyDown}
+          onChange={(e) => {
+            const newVal = e.target.value
+            setDraft(newVal)
+            setEditing(false)
+            if (newVal !== value) {
+              setSaving(true)
+              onSave(newVal).then((result) => {
+                if (result.error) {
+                  alert(result.error)
+                  setDraft(value)
+                }
+                setSaving(false)
+              })
+            }
+          }}
+          onBlur={() => setEditing(false)} onKeyDown={handleKeyDown}
           className={inputClass}>
           {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>

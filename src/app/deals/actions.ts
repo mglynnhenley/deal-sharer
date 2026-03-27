@@ -41,6 +41,8 @@ export async function saveDeals(deals: DealInsert[]) {
           website_url: deal.website_url,
           linkedin_url: deal.linkedin_url,
           one_liner: deal.one_liner,
+          sectors: deal.sectors,
+          stage: deal.stage,
           fund_id: fundId,
         })
         .select('id')
@@ -62,11 +64,8 @@ export async function saveDeals(deals: DealInsert[]) {
     // Insert user's deal metadata (ignore if already linked)
     const { error: udError } = await supabase.from('user_deals').insert({
       deal_id: dealId,
-      one_liner: deal.one_liner,
       raise_amount: deal.raise_amount,
       currency: deal.currency || 'EUR',
-      sector: deal.sector,
-      priority: deal.priority,
       status: deal.status,
       raw_source_text: deal.raw_source_text,
     })
@@ -81,10 +80,10 @@ export async function saveDeals(deals: DealInsert[]) {
   return { success: true, added, linked }
 }
 
-const SHARED_FIELDS = new Set(['company_name', 'website_url', 'linkedin_url'])
-const USER_FIELDS = new Set(['one_liner', 'priority', 'status', 'sector', 'raise_amount', 'currency'])
+const SHARED_FIELDS = new Set(['company_name', 'website_url', 'linkedin_url', 'one_liner', 'sectors', 'stage'])
+const USER_FIELDS = new Set(['status', 'raise_amount', 'currency'])
 
-export async function updateDeal(dealId: string, field: string, value: string | number | null) {
+export async function updateDeal(dealId: string, field: string, value: string | number | string[] | null) {
   if (!SHARED_FIELDS.has(field) && !USER_FIELDS.has(field)) {
     return { error: 'Invalid field' }
   }
@@ -93,11 +92,13 @@ export async function updateDeal(dealId: string, field: string, value: string | 
 
   if (SHARED_FIELDS.has(field)) {
     // Shared fields update the deals table
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('deals')
       .update({ [field]: value })
       .eq('id', dealId)
+      .select('id')
     if (error) return { error: error.message }
+    if (!data || data.length === 0) return { error: 'Update blocked — you may not have permission to edit this deal' }
   } else {
     // Per-user fields — update or create user_deal
     const { data: existing } = await supabase
@@ -147,9 +148,7 @@ export async function addDealToMyList(dealId: string, oneLiner?: string | null) 
 
   const { error } = await supabase.from('user_deals').insert({
     deal_id: dealId,
-    priority: 3,
     status: 'active',
-    ...(oneLiner ? { one_liner: oneLiner } : {}),
   })
 
   if (error && error.code !== '23505') return { error: error.message }

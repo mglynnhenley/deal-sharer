@@ -4,23 +4,11 @@ import type { Investor } from '@/lib/supabase/types'
 import { EditableField } from '@/components/EditableField'
 import { updateInvestor, deleteInvestor } from '@/app/investors/actions'
 
-const thresholdOptions = [
-  { value: '1', label: 'P1 only (top deals)' },
-  { value: '2', label: 'P1–2 (top + good)' },
-  { value: '3', label: 'P1–3 (everything)' },
-]
-
 const frequencyOptions = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'bi-weekly', label: 'Bi-weekly' },
   { value: 'monthly', label: 'Monthly' },
 ]
-
-function thresholdBadge(t: number) {
-  if (t === 1) return 'bg-amber-50 text-amber-800'
-  if (t === 2) return 'bg-stone-100 text-stone-700'
-  return 'bg-stone-50 text-stone-500'
-}
 
 export function InvestorList({ investors }: { investors: Investor[] }) {
   if (investors.length === 0) {
@@ -39,8 +27,7 @@ export function InvestorList({ investors }: { investors: Investor[] }) {
 function InvestorRow({ investor }: { investor: Investor }) {
   async function handleUpdate(field: string, value: string) {
     let parsed: string | number | string[] | null = value || null
-    if (field === 'priority_threshold') parsed = parseInt(value)
-    if (field === 'sectors')
+    if (field === 'sectors' || field === 'stages')
       parsed = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
     return updateInvestor(investor.id, field, parsed)
   }
@@ -62,13 +49,6 @@ function InvestorRow({ investor }: { investor: Investor }) {
               </span>
             )}
             <EditableField
-              value={String(investor.priority_threshold)}
-              onSave={(v) => handleUpdate('priority_threshold', v)}
-              type="select"
-              options={thresholdOptions}
-              className={`text-xs font-medium px-2 py-0.5 rounded ${thresholdBadge(investor.priority_threshold)}`}
-            />
-            <EditableField
               value={investor.sharing_frequency}
               onSave={(v) => handleUpdate('sharing_frequency', v)}
               type="select"
@@ -76,12 +56,22 @@ function InvestorRow({ investor }: { investor: Investor }) {
               className="text-xs text-secondary"
             />
           </div>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex gap-4">
             <span className="text-xs text-accent">
               <EditableField
                 value={investor.sectors?.join(', ') || ''}
                 onSave={(v) => handleUpdate('sectors', v)}
                 placeholder="Add sectors (comma-separated)..."
+                className="text-xs"
+              />
+            </span>
+          </div>
+          <div className="mt-1">
+            <span className="text-xs text-violet-700">
+              <EditableField
+                value={investor.stages?.join(', ') || ''}
+                onSave={(v) => handleUpdate('stages', v)}
+                placeholder="Add stages (e.g. pre-seed, seed, series-a)..."
                 className="text-xs"
               />
             </span>

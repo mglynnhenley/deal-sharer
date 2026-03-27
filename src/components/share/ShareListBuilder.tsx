@@ -21,6 +21,20 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+function hasSectorOverlap(deal: Deal, investor: Investor): boolean {
+  if (!investor.sectors.length || !deal.sectors.length) return true
+  return deal.sectors.some((s) => investor.sectors.includes(s))
+}
+
+function hasStageMismatch(deal: Deal, investor: Investor): boolean {
+  if (!deal.stage || !investor.stages.length) return false
+  return !investor.stages.includes(deal.stage)
+}
+
+function formatStage(stage: string): string {
+  return stage.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
   const [selectedInvestorId, setSelectedInvestorId] = useState<string | null>(
     investors[0]?.id || null,
@@ -45,9 +59,24 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     )
   }, [investors, investorSearch])
 
-  const eligibleDeals = selectedInvestor
-    ? deals.filter((d) => d.priority <= selectedInvestor.priority_threshold && d.status === 'active')
-    : []
+  const eligibleDeals = deals.filter((d) => d.status === 'active')
+
+  // Split deals into matched (sector overlap + no stage mismatch) and other
+  const { matchedDeals, otherDeals } = useMemo(() => {
+    if (!selectedInvestor) return { matchedDeals: [] as Deal[], otherDeals: [] as Deal[] }
+    const matched: Deal[] = []
+    const other: Deal[] = []
+    for (const deal of eligibleDeals) {
+      const sectorMatch = hasSectorOverlap(deal, selectedInvestor)
+      const stageMismatch = hasStageMismatch(deal, selectedInvestor)
+      if (sectorMatch && !stageMismatch) {
+        matched.push(deal)
+      } else {
+        other.push(deal)
+      }
+    }
+    return { matchedDeals: matched, otherDeals: other }
+  }, [selectedInvestor, eligibleDeals])
 
   useEffect(() => {
     if (!selectedInvestorId) return
@@ -57,7 +86,8 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
   }, [selectedInvestorId])
 
   useEffect(() => {
-    const unshared = eligibleDeals.filter((d) => !alreadySharedIds.has(d.id))
+    // Auto-select matched deals that haven't been shared
+    const unshared = matchedDeals.filter((d) => !alreadySharedIds.has(d.id))
     setSelectedDealIds(new Set(unshared.map((d) => d.id)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alreadySharedIds, selectedInvestorId])
@@ -110,6 +140,54 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
 
   if (investors.length === 0) {
     return <p className="text-secondary text-sm">Add some investors first.</p>
+  }
+
+  function renderDealCard(deal: Deal) {
+    const shared = alreadySharedIds.has(deal.id)
+    const selected = selectedDealIds.has(deal.id)
+    const stageMismatch = selectedInvestor ? hasStageMismatch(deal, selectedInvestor) : false
+
+    return (
+      <label
+        key={deal.id}
+        className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer ${
+          shared
+            ? 'opacity-50 bg-muted border-border'
+            : selected
+              ? 'bg-accent-light border-accent/20'
+              : 'bg-surface border-border'
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => toggleDeal(deal.id)}
+          className="mt-1 accent-accent"
+        />
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-foreground">{deal.company_name}</span>
+            {deal.stage && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-violet-50 text-violet-800">
+                {formatStage(deal.stage)}
+              </span>
+            )}
+            {deal.sectors.length > 0 && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent">
+                {deal.sectors.join(', ')}
+              </span>
+            )}
+            {stageMismatch && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">
+                Stage mismatch
+              </span>
+            )}
+            {shared && <span className="text-xs text-amber-600">Previously shared</span>}
+          </div>
+          {deal.one_liner && <p className="text-sm text-secondary mt-0.5">{deal.one_liner}</p>}
+        </div>
+      </label>
+    )
   }
 
   return (
@@ -165,46 +243,37 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
       <div className="flex-1 space-y-4">
         {selectedInvestor && (
           <>
-            <p className="text-sm text-secondary">
-              Showing P1{selectedInvestor.priority_threshold > 1 ? `–${selectedInvestor.priority_threshold}` : ''} for{' '}
+            <div className="text-sm text-secondary">
               <span className="font-medium text-foreground">{selectedInvestor.contact_name}</span>
-            </p>
+              {selectedInvestor.sectors.length > 0 && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent">
+                  {selectedInvestor.sectors.join(', ')}
+                </span>
+              )}
+              {selectedInvestor.stages.length > 0 && (
+                <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-violet-50 text-violet-800">
+                  {selectedInvestor.stages.map(formatStage).join(', ')}
+                </span>
+              )}
+            </div>
 
             {eligibleDeals.length === 0 ? (
-              <p className="text-secondary text-sm">No deals match this investor&apos;s threshold.</p>
+              <p className="text-secondary text-sm">No active deals to share.</p>
             ) : (
-              <div className="space-y-2">
-                {eligibleDeals.map((deal) => {
-                  const shared = alreadySharedIds.has(deal.id)
-                  const selected = selectedDealIds.has(deal.id)
-                  return (
-                    <label
-                      key={deal.id}
-                      className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer ${
-                        shared
-                          ? 'opacity-50 bg-muted border-border'
-                          : selected
-                            ? 'bg-accent-light border-accent/20'
-                            : 'bg-surface border-border'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleDeal(deal.id)}
-                        className="mt-1 accent-accent"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-foreground">{deal.company_name}</span>
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-secondary">P{deal.priority}</span>
-                          {shared && <span className="text-xs text-amber-600">Previously shared</span>}
-                        </div>
-                        {deal.one_liner && <p className="text-sm text-secondary mt-0.5">{deal.one_liner}</p>}
-                      </div>
-                    </label>
-                  )
-                })}
+              <div className="space-y-4">
+                {matchedDeals.length > 0 && (
+                  <div className="space-y-2">
+                    {matchedDeals.map(renderDealCard)}
+                  </div>
+                )}
+                {otherDeals.length > 0 && (
+                  <div className="space-y-2">
+                    {matchedDeals.length > 0 && (
+                      <p className="text-xs text-secondary font-medium pt-2">Other deals</p>
+                    )}
+                    {otherDeals.map(renderDealCard)}
+                  </div>
+                )}
               </div>
             )}
 

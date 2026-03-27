@@ -24,17 +24,16 @@ export type SharedDeal = {
   website_url: string | null
   linkedin_url: string | null
   one_liner: string | null
+  sectors: string[]
+  stage: string | null
 }
 
 /** Per-user deal metadata */
 export type UserDeal = {
   id: string
   deal_id: string
-  one_liner: string | null
   raise_amount: number | null
   currency: string | null
-  sector: string | null
-  priority: 1 | 2 | 3
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null
 }
@@ -50,8 +49,8 @@ export type Deal = {
   one_liner: string | null
   raise_amount: number | null
   currency: string | null
-  sector: string | null
-  priority: 1 | 2 | 3
+  sectors: string[]
+  stage: string | null
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null
   is_in_my_list: boolean
@@ -65,9 +64,9 @@ export type Investor = {
   email: string | null
   phone: string | null
   linkedin_url: string | null
-  priority_threshold: 1 | 2 | 3
   sharing_frequency: 'weekly' | 'bi-weekly' | 'monthly'
   sectors: string[]
+  stages: string[]
   thesis_description: string | null
   raw_source_text: string | null
 }
@@ -88,10 +87,13 @@ export type DealInsert = {
   one_liner: string | null
   raise_amount: number | null
   currency: string | null
-  sector: string | null
-  priority: 1 | 2 | 3
+  sectors: string[]
+  stage: string | null
   status: 'active' | 'passed' | 'closed'
   raw_source_text: string | null
 }
 
 export type InvestorInsert = Omit<Investor, 'id' | 'created_at'>
+
+export const DEAL_STAGES = ['pre-seed', 'seed', 'series-a', 'series-b', 'series-c', 'growth'] as const
+export type DealStage = (typeof DEAL_STAGES)[number]

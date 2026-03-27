@@ -14,13 +14,12 @@ type DealRow = {
   website_url: string | null
   linkedin_url: string | null
   one_liner: string | null
+  sectors: string[]
+  stage: string | null
   user_deals: {
     id: string
-    one_liner: string | null
     raise_amount: number | null
     currency: string | null
-    sector: string | null
-    priority: number
     status: string
     raw_source_text: string | null
   }[]
@@ -35,11 +34,11 @@ function flattenDeal(d: DealRow): Deal {
     website_url: d.website_url,
     linkedin_url: d.linkedin_url,
     user_deal_id: ud?.id || null,
-    one_liner: ud?.one_liner || d.one_liner || null,
+    one_liner: d.one_liner || null,
     raise_amount: ud?.raise_amount || null,
     currency: ud?.currency || 'EUR',
-    sector: ud?.sector || null,
-    priority: (ud?.priority || 3) as 1 | 2 | 3,
+    sectors: d.sectors || [],
+    stage: d.stage || null,
     status: (ud?.status || 'active') as 'active' | 'passed' | 'closed',
     raw_source_text: ud?.raw_source_text || null,
     is_in_my_list: !!ud,
@@ -69,7 +68,7 @@ export default async function Home({
     const { data } = await supabase
       .from('deals')
       .select(
-        'id, created_at, company_name, website_url, linkedin_url, one_liner, user_deals(id, one_liner, raise_amount, currency, sector, priority, status, raw_source_text)',
+        'id, created_at, company_name, website_url, linkedin_url, one_liner, sectors, stage, user_deals(id, raise_amount, currency, status, raw_source_text)',
       )
       .order('created_at', { ascending: false })
     deals = ((data as DealRow[]) || []).map(flattenDeal)
@@ -77,7 +76,6 @@ export default async function Home({
     const { data } = await supabase
       .from('investors')
       .select()
-      .order('priority_threshold', { ascending: true })
       .order('created_at', { ascending: false })
     investors = (data as Investor[]) || []
   } else {
@@ -91,7 +89,7 @@ export default async function Home({
     let dealsQuery = supabase
       .from('deals')
       .select(
-        'id, created_at, company_name, website_url, linkedin_url, user_deals!inner(id, one_liner, raise_amount, currency, sector, priority, status, raw_source_text)',
+        'id, created_at, company_name, website_url, linkedin_url, one_liner, sectors, stage, user_deals!inner(id, raise_amount, currency, status, raw_source_text)',
       )
       .eq('user_deals.status', 'active')
       .order('created_at', { ascending: false })
@@ -143,6 +141,7 @@ export default async function Home({
 function DateRangeForm({ from, to }: { from?: string; to?: string }) {
   return (
     <form className="flex items-center gap-3 text-sm">
+      <input type="hidden" name="tab" value="share" />
       <label className="text-secondary">From:</label>
       <input type="date" name="from" defaultValue={from}
         className="px-2 py-1.5 border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20" />
