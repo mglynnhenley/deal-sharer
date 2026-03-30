@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import type { Deal, Investor } from '@/lib/supabase/types'
-import { saveShareRecords, getSharedDealIds } from '@/app/share/actions'
+import { DEAL_STAGES } from '@/lib/supabase/types'
+import { saveShareRecords, getSharedDealIdsForInvestors } from '@/app/share/actions'
 
 type Props = {
   investors: Investor[]
@@ -21,6 +22,10 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+function formatStage(stage: string): string {
+  return stage.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function hasSectorOverlap(deal: Deal, investor: Investor): boolean {
   if (!investor.sectors.length || !deal.sectors.length) return true
   return deal.sectors.some((s) => investor.sectors.includes(s))
@@ -31,22 +36,36 @@ function hasStageMismatch(deal: Deal, investor: Investor): boolean {
   return !investor.stages.includes(deal.stage)
 }
 
-function formatStage(stage: string): string {
-  return stage.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+// Check against union of multiple investors
+function hasSectorOverlapAny(deal: Deal, investors: Investor[]): boolean {
+  if (investors.length === 0) return true
+  const allSectors = investors.flatMap((i) => i.sectors)
+  if (allSectors.length === 0 || deal.sectors.length === 0) return true
+  return deal.sectors.some((s) => allSectors.includes(s))
+}
+
+function hasStageMismatchAll(deal: Deal, investors: Investor[]): boolean {
+  if (!deal.stage || investors.length === 0) return false
+  const allStages = new Set(investors.flatMap((i) => i.stages))
+  if (allStages.size === 0) return false
+  return !allStages.has(deal.stage)
 }
 
 export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
-  const [selectedInvestorId, setSelectedInvestorId] = useState<string | null>(
-    investors[0]?.id || null,
-  )
+  const [selectedInvestorIds, setSelectedInvestorIds] = useState<Set<string>>(new Set())
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set())
-  const [alreadySharedIds, setAlreadySharedIds] = useState<Set<string>>(new Set())
+  // Map of investor_id -> Set of deal_ids already shared
+  const [alreadySharedMap, setAlreadySharedMap] = useState<Record<string, Set<string>>>({})
   const [output, setOutput] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [sharedDates, setSharedDates] = useState(lastSharedDates)
   const [investorSearch, setInvestorSearch] = useState('')
 
-  const selectedInvestor = investors.find((i) => i.id === selectedInvestorId)
+  // Filters — sets of selected values (empty = show all)
+  const [stageFilters, setStageFilters] = useState<Set<string>>(new Set())
+  const [sectorFilters, setSectorFilters] = useState<Set<string>>(new Set())
+
+  const selectedInvestors = investors.filter((i) => selectedInvestorIds.has(i.id))
 
   const filteredInvestors = useMemo(() => {
     if (!investorSearch.trim()) return investors
@@ -59,16 +78,68 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     )
   }, [investors, investorSearch])
 
-  const eligibleDeals = deals.filter((d) => d.status === 'active')
+  // Collect all unique sectors from deals for the filter dropdown
+  const allSectors = useMemo(() => {
+    const set = new Set<string>()
+    for (const d of deals) {
+      for (const s of d.sectors) set.add(s)
+    }
+    return Array.from(set).sort()
+  }, [deals])
 
-  // Split deals into matched (sector overlap + no stage mismatch) and other
+  // Union of stages/sectors from selected investors (for pre-populating filters)
+  const selectedInvestorStages = useMemo(() => {
+    return [...new Set(selectedInvestors.flatMap((i) => i.stages))]
+  }, [selectedInvestors])
+
+  const selectedInvestorSectors = useMemo(() => {
+    return [...new Set(selectedInvestors.flatMap((i) => i.sectors))]
+  }, [selectedInvestors])
+
+  // Auto-populate filters from selected investors' preferences
+  useEffect(() => {
+    setStageFilters(new Set(selectedInvestorStages))
+    setSectorFilters(new Set(selectedInvestorSectors))
+  }, [selectedInvestorStages, selectedInvestorSectors])
+
+  function toggleStageFilter(stage: string) {
+    setStageFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(stage)) next.delete(stage)
+      else next.add(stage)
+      return next
+    })
+  }
+
+  function toggleSectorFilter(sector: string) {
+    setSectorFilters((prev) => {
+      const next = new Set(prev)
+      if (next.has(sector)) next.delete(sector)
+      else next.add(sector)
+      return next
+    })
+  }
+
+  // Filter deals by status + stage + sector selections
+  const filteredDeals = useMemo(() => {
+    let result = deals.filter((d) => d.status === 'active')
+    if (stageFilters.size > 0) {
+      result = result.filter((d) => d.stage && stageFilters.has(d.stage))
+    }
+    if (sectorFilters.size > 0) {
+      result = result.filter((d) => d.sectors.some((s) => sectorFilters.has(s)))
+    }
+    return result
+  }, [deals, stageFilters, sectorFilters])
+
+  // Split deals into matched (sector overlap + no stage mismatch vs selected investors) and other
   const { matchedDeals, otherDeals } = useMemo(() => {
-    if (!selectedInvestor) return { matchedDeals: [] as Deal[], otherDeals: [] as Deal[] }
+    if (selectedInvestors.length === 0) return { matchedDeals: filteredDeals, otherDeals: [] as Deal[] }
     const matched: Deal[] = []
     const other: Deal[] = []
-    for (const deal of eligibleDeals) {
-      const sectorMatch = hasSectorOverlap(deal, selectedInvestor)
-      const stageMismatch = hasStageMismatch(deal, selectedInvestor)
+    for (const deal of filteredDeals) {
+      const sectorMatch = hasSectorOverlapAny(deal, selectedInvestors)
+      const stageMismatch = hasStageMismatchAll(deal, selectedInvestors)
       if (sectorMatch && !stageMismatch) {
         matched.push(deal)
       } else {
@@ -76,21 +147,55 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
       }
     }
     return { matchedDeals: matched, otherDeals: other }
-  }, [selectedInvestor, eligibleDeals])
+  }, [selectedInvestors, filteredDeals])
 
+  // A deal is "already shared" if shared with ALL selected investors
+  const alreadySharedWithAll = useMemo(() => {
+    if (selectedInvestorIds.size === 0) return new Set<string>()
+    const ids = Array.from(selectedInvestorIds)
+    const allDeals = deals.map((d) => d.id)
+    const sharedWithAll = new Set<string>()
+    for (const dealId of allDeals) {
+      if (ids.every((invId) => alreadySharedMap[invId]?.has(dealId))) {
+        sharedWithAll.add(dealId)
+      }
+    }
+    return sharedWithAll
+  }, [selectedInvestorIds, alreadySharedMap, deals])
+
+  // Fetch shared deal IDs when investor selection changes
   useEffect(() => {
-    if (!selectedInvestorId) return
-    getSharedDealIds(selectedInvestorId).then((ids) => setAlreadySharedIds(new Set(ids)))
+    const ids = Array.from(selectedInvestorIds)
+    if (ids.length === 0) {
+      setAlreadySharedMap({})
+      return
+    }
+    getSharedDealIdsForInvestors(ids).then((result) => {
+      // Convert plain objects back to Sets (server actions serialize Sets as plain objects)
+      const map: Record<string, Set<string>> = {}
+      for (const [invId, dealIds] of Object.entries(result)) {
+        map[invId] = dealIds instanceof Set ? dealIds : new Set(Object.values(dealIds as Record<string, string>))
+      }
+      setAlreadySharedMap(map)
+    })
     setSelectedDealIds(new Set())
     setOutput(null)
-  }, [selectedInvestorId])
+  }, [selectedInvestorIds])
 
+  // Auto-select matched deals that haven't been shared with all selected investors
   useEffect(() => {
-    // Auto-select matched deals that haven't been shared
-    const unshared = matchedDeals.filter((d) => !alreadySharedIds.has(d.id))
+    const unshared = matchedDeals.filter((d) => !alreadySharedWithAll.has(d.id))
     setSelectedDealIds(new Set(unshared.map((d) => d.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alreadySharedIds, selectedInvestorId])
+  }, [alreadySharedWithAll, matchedDeals])
+
+  function toggleInvestor(id: string) {
+    setSelectedInvestorIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   function toggleDeal(dealId: string) {
     setSelectedDealIds((prev) => {
@@ -102,11 +207,13 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
   }
 
   async function handleFinalise() {
-    if (!selectedInvestorId || selectedDealIds.size === 0) return
+    if (selectedInvestorIds.size === 0 || selectedDealIds.size === 0) return
     setSaving(true)
 
     const batchId = crypto.randomUUID()
-    const result = await saveShareRecords(selectedInvestorId, Array.from(selectedDealIds), batchId)
+    const investorIds = Array.from(selectedInvestorIds)
+    const dealIds = Array.from(selectedDealIds)
+    const result = await saveShareRecords(investorIds, dealIds, batchId)
 
     if (result.error) {
       alert(result.error)
@@ -124,12 +231,22 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     })
     setOutput(`Some deals I've been looking at!\n\n${lines.join('\n\n')}`)
 
-    setAlreadySharedIds((prev) => {
-      const next = new Set(prev)
-      selectedDealIds.forEach((id) => next.add(id))
+    // Update already-shared state
+    setAlreadySharedMap((prev) => {
+      const next = { ...prev }
+      for (const invId of investorIds) {
+        const existing = next[invId] ? new Set(next[invId]) : new Set<string>()
+        for (const dealId of dealIds) existing.add(dealId)
+        next[invId] = existing
+      }
       return next
     })
-    setSharedDates((prev) => ({ ...prev, [selectedInvestorId]: new Date().toISOString() }))
+    const now = new Date().toISOString()
+    setSharedDates((prev) => {
+      const next = { ...prev }
+      for (const invId of investorIds) next[invId] = now
+      return next
+    })
     setSelectedDealIds(new Set())
     setSaving(false)
   }
@@ -142,16 +259,23 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     return <p className="text-secondary text-sm">Add some investors first.</p>
   }
 
+  // For a deal, how many selected investors has it already been shared with?
+  function sharedStatus(dealId: string): { sharedWithAll: boolean; count: number; total: number } {
+    const ids = Array.from(selectedInvestorIds)
+    const count = ids.filter((invId) => alreadySharedMap[invId]?.has(dealId)).length
+    return { sharedWithAll: count === ids.length && ids.length > 0, count, total: ids.length }
+  }
+
   function renderDealCard(deal: Deal) {
-    const shared = alreadySharedIds.has(deal.id)
+    const { sharedWithAll, count, total } = sharedStatus(deal.id)
     const selected = selectedDealIds.has(deal.id)
-    const stageMismatch = selectedInvestor ? hasStageMismatch(deal, selectedInvestor) : false
+    const stageMismatch = selectedInvestors.length > 0 ? hasStageMismatchAll(deal, selectedInvestors) : false
 
     return (
       <label
         key={deal.id}
         className={`flex items-start gap-3 border rounded-lg p-3 cursor-pointer ${
-          shared
+          sharedWithAll
             ? 'opacity-50 bg-muted border-border'
             : selected
               ? 'bg-accent-light border-accent/20'
@@ -182,7 +306,10 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
                 Stage mismatch
               </span>
             )}
-            {shared && <span className="text-xs text-amber-600">Previously shared</span>}
+            {sharedWithAll && <span className="text-xs text-amber-600">Previously shared</span>}
+            {!sharedWithAll && count > 0 && (
+              <span className="text-xs text-amber-600">Shared with {count}/{total}</span>
+            )}
           </div>
           {deal.one_liner && <p className="text-sm text-secondary mt-0.5">{deal.one_liner}</p>}
         </div>
@@ -190,10 +317,13 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     )
   }
 
+  // Only show WhatsApp if exactly 1 investor selected and they have a phone
+  const singleInvestor = selectedInvestors.length === 1 ? selectedInvestors[0] : null
+
   return (
     <div className="flex gap-6">
-      {/* Investor sidebar */}
-      <div className="w-60 shrink-0 space-y-2">
+      {/* Investor sidebar — multi-select with checkboxes */}
+      <div className="w-64 shrink-0 space-y-2">
         <input
           type="text"
           value={investorSearch}
@@ -201,38 +331,49 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
           placeholder="Search investors..."
           className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
         />
+        {selectedInvestorIds.size > 0 && (
+          <button
+            onClick={() => setSelectedInvestorIds(new Set())}
+            className="text-xs text-secondary hover:text-foreground"
+          >
+            Clear selection ({selectedInvestorIds.size})
+          </button>
+        )}
         <div className="space-y-0.5 max-h-[60vh] overflow-y-auto">
           {filteredInvestors.length === 0 ? (
             <p className="text-secondary text-xs px-3 py-2">No match</p>
           ) : (
             filteredInvestors.map((inv) => {
-              const active = inv.id === selectedInvestorId
+              const checked = selectedInvestorIds.has(inv.id)
               return (
-                <button
+                <label
                   key={inv.id}
-                  onClick={() => setSelectedInvestorId(inv.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                    active
-                      ? 'bg-accent text-white'
-                      : 'hover:bg-muted text-foreground'
+                  className={`flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg text-sm cursor-pointer ${
+                    checked ? 'bg-accent/10' : 'hover:bg-muted'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="truncate">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleInvestor(inv.id)}
+                    className="accent-accent shrink-0"
+                  />
+                  <div className="flex items-center justify-between gap-1 flex-1 min-w-0">
+                    <span className="truncate text-foreground">
                       {inv.contact_name}
                       {inv.fund_name && (
-                        <span className={`text-xs ml-1 ${active ? 'opacity-70' : 'text-secondary'}`}>
+                        <span className="text-xs ml-1 text-secondary">
                           @ {inv.fund_name}
                         </span>
                       )}
                     </span>
                     {sharedDates[inv.id] && (
-                      <span className={`text-xs shrink-0 ${active ? 'opacity-70' : 'text-secondary'}`}>
+                      <span className="text-xs shrink-0 text-secondary">
                         {formatDate(sharedDates[inv.id])}
                       </span>
                     )}
                   </div>
-                </button>
+                </label>
               )
             })
           )}
@@ -241,24 +382,74 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
 
       {/* Deal list */}
       <div className="flex-1 space-y-4">
-        {selectedInvestor && (
-          <>
-            <div className="text-sm text-secondary">
-              <span className="font-medium text-foreground">{selectedInvestor.contact_name}</span>
-              {selectedInvestor.sectors.length > 0 && (
-                <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent">
-                  {selectedInvestor.sectors.join(', ')}
-                </span>
-              )}
-              {selectedInvestor.stages.length > 0 && (
-                <span className="ml-1 text-xs px-1.5 py-0.5 rounded bg-violet-50 text-violet-800">
-                  {selectedInvestor.stages.map(formatStage).join(', ')}
-                </span>
+        {/* Filter bar: stage + sector multi-select pills */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-secondary shrink-0">Stage:</span>
+            {DEAL_STAGES.map((s) => {
+              const active = stageFilters.has(s)
+              return (
+                <button
+                  key={s}
+                  onClick={() => toggleStageFilter(s)}
+                  className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                    active
+                      ? 'bg-violet-100 text-violet-800 border-violet-300'
+                      : 'bg-surface text-secondary border-border hover:border-violet-300'
+                  }`}
+                >
+                  {formatStage(s)}
+                </button>
+              )
+            })}
+            {stageFilters.size > 0 && (
+              <button onClick={() => setStageFilters(new Set())} className="text-xs text-secondary hover:text-foreground ml-1">
+                Clear
+              </button>
+            )}
+          </div>
+          {allSectors.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-secondary shrink-0">Sector:</span>
+              {allSectors.map((s) => {
+                const active = sectorFilters.has(s)
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleSectorFilter(s)}
+                    className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
+                      active
+                        ? 'bg-accent-light text-accent border-accent/30'
+                        : 'bg-surface text-secondary border-border hover:border-accent/30'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                )
+              })}
+              {sectorFilters.size > 0 && (
+                <button onClick={() => setSectorFilters(new Set())} className="text-xs text-secondary hover:text-foreground ml-1">
+                  Clear
+                </button>
               )}
             </div>
+          )}
+        </div>
 
-            {eligibleDeals.length === 0 ? (
-              <p className="text-secondary text-sm">No active deals to share.</p>
+        {selectedInvestorIds.size === 0 ? (
+          <p className="text-secondary text-sm">Select one or more investors from the sidebar.</p>
+        ) : (
+          <>
+            <p className="text-sm text-secondary">
+              Sharing with{' '}
+              <span className="font-medium text-foreground">
+                {selectedInvestors.map((i) => i.contact_name).join(', ')}
+              </span>
+              {' '}&middot; {filteredDeals.length} deals
+            </p>
+
+            {filteredDeals.length === 0 ? (
+              <p className="text-secondary text-sm">No deals match your filters.</p>
             ) : (
               <div className="space-y-4">
                 {matchedDeals.length > 0 && (
@@ -277,13 +468,15 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
               </div>
             )}
 
-            {!output && eligibleDeals.length > 0 && (
+            {!output && filteredDeals.length > 0 && (
               <button
                 onClick={handleFinalise}
                 disabled={saving || selectedDealIds.size === 0}
                 className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
               >
-                {saving ? 'Saving...' : `Finalise (${selectedDealIds.size} deals)`}
+                {saving
+                  ? 'Saving...'
+                  : `Finalise (${selectedDealIds.size} deals → ${selectedInvestorIds.size} investor${selectedInvestorIds.size > 1 ? 's' : ''})`}
               </button>
             )}
 
@@ -296,14 +489,14 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
                   rows={Math.max(5, output.split('\n').length + 1)}
                   className="w-full bg-muted border border-border rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={copyToClipboard}
                     className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted">
                     Copy to clipboard
                   </button>
-                  {selectedInvestor?.phone && (
+                  {singleInvestor?.phone && (
                     <a
-                      href={`https://api.whatsapp.com/send?phone=${selectedInvestor.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(output)}`}
+                      href={`https://api.whatsapp.com/send?phone=${singleInvestor.phone.replace(/[^0-9]/g, '')}&text=${encodeURIComponent(output)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
                       Send via WhatsApp

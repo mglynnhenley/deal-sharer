@@ -4,17 +4,19 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function saveShareRecords(
-  investorId: string,
+  investorIds: string[],
   dealIds: string[],
   batchId: string
 ) {
   const supabase = await createClient()
 
-  const records = dealIds.map((dealId) => ({
-    investor_id: investorId,
-    deal_id: dealId,
-    batch_id: batchId,
-  }))
+  const records = investorIds.flatMap((investorId) =>
+    dealIds.map((dealId) => ({
+      investor_id: investorId,
+      deal_id: dealId,
+      batch_id: batchId,
+    }))
+  )
 
   const { error } = await supabase.from('share_records').insert(records)
   if (error) {
@@ -25,14 +27,19 @@ export async function saveShareRecords(
   return { success: true }
 }
 
-export async function getSharedDealIds(investorId: string): Promise<string[]> {
+export async function getSharedDealIdsForInvestors(investorIds: string[]): Promise<Record<string, Set<string>>> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('share_records')
-    .select('deal_id')
-    .eq('investor_id', investorId)
+    .select('investor_id, deal_id')
+    .in('investor_id', investorIds)
 
-  return data?.map((r) => r.deal_id) || []
+  const result: Record<string, Set<string>> = {}
+  for (const id of investorIds) result[id] = new Set()
+  for (const r of data || []) {
+    result[r.investor_id]?.add(r.deal_id)
+  }
+  return result
 }
 
 export async function deleteShareBatch(batchId: string) {
