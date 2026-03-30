@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import type { Investor } from '@/lib/supabase/types'
+import { DEAL_STAGES } from '@/lib/supabase/types'
 import { EditableField } from '@/components/EditableField'
 import { updateInvestor, deleteInvestor } from '@/app/investors/actions'
 
@@ -9,6 +11,10 @@ const frequencyOptions = [
   { value: 'bi-weekly', label: 'Bi-weekly' },
   { value: 'monthly', label: 'Monthly' },
 ]
+
+function formatStage(stage: string): string {
+  return stage.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 export function InvestorList({ investors }: { investors: Investor[] }) {
   if (investors.length === 0) {
@@ -25,11 +31,26 @@ export function InvestorList({ investors }: { investors: Investor[] }) {
 }
 
 function InvestorRow({ investor }: { investor: Investor }) {
+  const [stages, setStages] = useState<Set<string>>(new Set(investor.stages || []))
+
   async function handleUpdate(field: string, value: string) {
     let parsed: string | number | string[] | null = value || null
-    if (field === 'sectors' || field === 'stages')
+    if (field === 'sectors')
       parsed = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
     return updateInvestor(investor.id, field, parsed)
+  }
+
+  async function toggleStage(stage: string) {
+    const next = new Set(stages)
+    if (next.has(stage)) next.delete(stage)
+    else next.add(stage)
+    setStages(next)
+    const result = await updateInvestor(investor.id, 'stages', Array.from(next))
+    if (result.error) {
+      // Revert on error
+      setStages(new Set(investor.stages || []))
+      alert(result.error)
+    }
   }
 
   return (
@@ -56,22 +77,33 @@ function InvestorRow({ investor }: { investor: Investor }) {
               className="text-xs text-secondary"
             />
           </div>
-          <div className="mt-1.5 flex gap-4">
+          <div className="mt-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-secondary shrink-0">Stages:</span>
+              {DEAL_STAGES.map((s) => {
+                const active = stages.has(s)
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleStage(s)}
+                    className={`px-2 py-0.5 text-xs rounded-lg border transition-colors ${
+                      active
+                        ? 'bg-violet-100 text-violet-800 border-violet-300'
+                        : 'bg-surface text-secondary border-border hover:border-violet-300'
+                    }`}
+                  >
+                    {formatStage(s)}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="mt-1.5">
             <span className="text-xs text-accent">
               <EditableField
                 value={investor.sectors?.join(', ') || ''}
                 onSave={(v) => handleUpdate('sectors', v)}
                 placeholder="Add sectors (comma-separated)..."
-                className="text-xs"
-              />
-            </span>
-          </div>
-          <div className="mt-1">
-            <span className="text-xs text-violet-700">
-              <EditableField
-                value={investor.stages?.join(', ') || ''}
-                onSave={(v) => handleUpdate('stages', v)}
-                placeholder="Add stages (e.g. pre-seed, seed, series-a)..."
                 className="text-xs"
               />
             </span>
