@@ -26,9 +26,20 @@ describe('parseDealsFromLLMResponse', () => {
     expect(result).toHaveLength(2)
     expect(result[0].company_name).toBe('Jaipur Robotics')
     expect(result[0].raise_amount).toBe(4000000)
-    expect(result[0].sector).toBe('Climate Tech')
+    expect(result[0].sectors).toEqual(['Climate Tech'])
     expect(result[1].company_name).toBe('Polybot')
-    expect(result[1].sector).toBe('AgTech')
+    expect(result[1].sectors).toEqual(['AgTech'])
+  })
+
+  it('filters out sectors not in DEAL_SECTORS', () => {
+    const llmOutput = JSON.stringify([
+      {
+        company_name: 'TestCo',
+        sectors: ['AI/ML', 'Made Up Sector', 'SaaS'],
+      },
+    ])
+    const result = parseDealsFromLLMResponse(llmOutput)
+    expect(result[0].sectors).toEqual(['AI/ML', 'SaaS'])
   })
 
   it('handles LLM output wrapped in markdown code block', () => {

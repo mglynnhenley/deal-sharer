@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import type { Deal, Investor } from '@/lib/supabase/types'
-import { DEAL_STAGES } from '@/lib/supabase/types'
+import { DEAL_STAGES, DEAL_SECTORS } from '@/lib/supabase/types'
+import { MultiSelectDropdown } from '@/components/MultiSelectDropdown'
 import { saveShareRecords, getSharedDealIdsForInvestors } from '@/app/share/actions'
 
 type Props = {
@@ -65,7 +66,10 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
   const [stageFilters, setStageFilters] = useState<Set<string>>(new Set())
   const [sectorFilters, setSectorFilters] = useState<Set<string>>(new Set())
 
-  const selectedInvestors = investors.filter((i) => selectedInvestorIds.has(i.id))
+  const selectedInvestors = useMemo(
+    () => investors.filter((i) => selectedInvestorIds.has(i.id)),
+    [investors, selectedInvestorIds],
+  )
 
   const filteredInvestors = useMemo(() => {
     if (!investorSearch.trim()) return investors
@@ -111,23 +115,15 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
     })
   }
 
-  function toggleSectorFilter(sector: string) {
-    setSectorFilters((prev) => {
-      const next = new Set(prev)
-      if (next.has(sector)) next.delete(sector)
-      else next.add(sector)
-      return next
-    })
-  }
 
   // Filter deals by status + stage + sector selections
   const filteredDeals = useMemo(() => {
     let result = deals.filter((d) => d.status === 'active')
     if (stageFilters.size > 0) {
-      result = result.filter((d) => d.stage && stageFilters.has(d.stage))
+      result = result.filter((d) => !d.stage || stageFilters.has(d.stage))
     }
     if (sectorFilters.size > 0) {
-      result = result.filter((d) => d.sectors.some((s) => sectorFilters.has(s)))
+      result = result.filter((d) => d.sectors.length === 0 || d.sectors.some((s) => sectorFilters.has(s)))
     }
     return result
   }, [deals, stageFilters, sectorFilters])
@@ -408,32 +404,15 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
               </button>
             )}
           </div>
-          {allSectors.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-secondary shrink-0">Sector:</span>
-              {allSectors.map((s) => {
-                const active = sectorFilters.has(s)
-                return (
-                  <button
-                    key={s}
-                    onClick={() => toggleSectorFilter(s)}
-                    className={`px-2 py-1 text-xs rounded-lg border transition-colors ${
-                      active
-                        ? 'bg-accent-light text-accent border-accent/30'
-                        : 'bg-surface text-secondary border-border hover:border-accent/30'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                )
-              })}
-              {sectorFilters.size > 0 && (
-                <button onClick={() => setSectorFilters(new Set())} className="text-xs text-secondary hover:text-foreground ml-1">
-                  Clear
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-secondary shrink-0">Sector:</span>
+            <MultiSelectDropdown
+              options={[...DEAL_SECTORS]}
+              selected={Array.from(sectorFilters)}
+              onChange={(sectors) => setSectorFilters(new Set(sectors))}
+              placeholder="All sectors"
+            />
+          </div>
         </div>
 
         {selectedInvestorIds.size === 0 ? (

@@ -45,13 +45,16 @@ export async function getSharedDealIdsForInvestors(investorIds: string[]): Promi
 export async function deleteShareBatch(batchId: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('share_records')
     .delete()
     .eq('batch_id', batchId)
+    .select('id')
 
   if (error) return { error: error.message }
+  if (!data || data.length === 0) return { error: 'Share record not found or no permission to delete' }
 
+  revalidatePath('/')
   revalidatePath('/history')
   return { success: true }
 }

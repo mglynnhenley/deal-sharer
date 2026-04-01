@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Deal } from '@/lib/supabase/types'
-import { DEAL_STAGES } from '@/lib/supabase/types'
+import { DEAL_STAGES, DEAL_SECTORS } from '@/lib/supabase/types'
 import { EditableField } from '@/components/EditableField'
+import { MultiSelectDropdown } from '@/components/MultiSelectDropdown'
 import { updateDeal, deleteDeal, addDealToMyList, deleteTeamDeal } from '@/app/deals/actions'
 
 type WeekGroup = { label: string; deals: Deal[] }
@@ -77,23 +78,48 @@ function matchesSearch(deal: Deal, query: string): boolean {
 
 export function DealList({ deals }: { deals: Deal[] }) {
   const [search, setSearch] = useState('')
+  const [stageFilter, setStageFilter] = useState<string[]>([])
+  const [sectorFilter, setSectorFilter] = useState<string[]>([])
 
   if (deals.length === 0) {
     return <p className="text-secondary text-sm">No deals yet.</p>
   }
 
-  const filtered = search.trim() ? deals.filter((d) => matchesSearch(d, search.trim())) : deals
+  let filtered = deals
+  if (stageFilter.length > 0) {
+    filtered = filtered.filter((d) => !d.stage || stageFilter.includes(d.stage))
+  }
+  if (sectorFilter.length > 0) {
+    filtered = filtered.filter((d) => d.sectors.length === 0 || d.sectors.some((s) => sectorFilter.includes(s)))
+  }
+  if (search.trim()) {
+    filtered = filtered.filter((d) => matchesSearch(d, search.trim()))
+  }
   const groups = groupByWeek(filtered)
 
   return (
     <div className="space-y-4">
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search deals..."
-        className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
-      />
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search deals..."
+          className="flex-1 min-w-[200px] px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
+        />
+        <MultiSelectDropdown
+          options={[...DEAL_STAGES]}
+          selected={stageFilter}
+          onChange={setStageFilter}
+          placeholder="Stage..."
+        />
+        <MultiSelectDropdown
+          options={[...DEAL_SECTORS]}
+          selected={sectorFilter}
+          onChange={setSectorFilter}
+          placeholder="Sector..."
+        />
+      </div>
 
       {filtered.length === 0 ? (
         <p className="text-secondary text-sm">No deals match your filters.</p>
@@ -209,22 +235,16 @@ function DealRow({ deal }: { deal: Deal }) {
                 placeholder="Stage"
               />
             )}
-            {deal.sectors.length > 0 ? (
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-accent-light text-accent">
-                <EditableField
-                  value={deal.sectors.join(', ')}
-                  onSave={(v) => handleUpdate('sectors', v)}
-                />
-              </span>
-            ) : (
-              <span className="text-xs text-secondary">
-                <EditableField
-                  value=""
-                  onSave={(v) => handleUpdate('sectors', v)}
-                  placeholder="Add sectors..."
-                />
-              </span>
-            )}
+            <MultiSelectDropdown
+              options={[...DEAL_SECTORS]}
+              selected={deal.sectors}
+              onChange={async (sectors) => {
+                const result = await updateDeal(deal.id, 'sectors', sectors)
+                if (result.error) alert(result.error)
+                else router.refresh()
+              }}
+              placeholder="Sectors..."
+            />
             <EditableField
               value={deal.status}
               onSave={(v) => handleUpdate('status', v)}

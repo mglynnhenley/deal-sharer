@@ -129,7 +129,7 @@ export async function updateDeal(dealId: string, field: string, value: string | 
 export async function deleteDeal(dealId: string) {
   const supabase = await createClient()
 
-  // Remove the user's link to this deal (not the shared deal itself)
+  // Remove the user's link to this deal
   const { data, error } = await supabase
     .from('user_deals')
     .delete()
@@ -138,6 +138,16 @@ export async function deleteDeal(dealId: string) {
 
   if (error) return { error: error.message }
   if (!data || data.length === 0) return { error: 'Deal not found or no permission to delete' }
+
+  // If no other users have this deal linked, delete the shared deal too
+  const { count } = await supabase
+    .from('user_deals')
+    .select('id', { count: 'exact', head: true })
+    .eq('deal_id', dealId)
+
+  if (count === 0) {
+    await supabase.from('deals').delete().eq('id', dealId)
+  }
 
   revalidatePath('/')
   return { success: true }
@@ -160,12 +170,14 @@ export async function addDealToMyList(dealId: string, oneLiner?: string | null) 
 export async function deleteTeamDeal(dealId: string) {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('deals')
     .delete()
     .eq('id', dealId)
+    .select('id')
 
   if (error) return { error: error.message }
+  if (!data || data.length === 0) return { error: 'Could not delete — you may not be the creator of this deal' }
 
   revalidatePath('/')
   return { success: true }

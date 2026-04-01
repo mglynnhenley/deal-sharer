@@ -1,4 +1,4 @@
-import { DEAL_STAGES } from '@/lib/supabase/types'
+import { DEAL_STAGES, DEAL_SECTORS } from '@/lib/supabase/types'
 
 export type ExtractedDeal = {
   company_name: string
@@ -28,8 +28,8 @@ export function parseDealsFromLLMResponse(output: string): ExtractedDeal[] {
       linkedin_url: d.linkedin_url ? String(d.linkedin_url) : null,
       one_liner: d.one_liner ? String(d.one_liner) : null,
       sectors: Array.isArray(d.sectors)
-        ? d.sectors.map(String)
-        : d.sector
+        ? d.sectors.map(String).filter((s) => (DEAL_SECTORS as readonly string[]).includes(s))
+        : d.sector && (DEAL_SECTORS as readonly string[]).includes(String(d.sector))
           ? [String(d.sector)]
           : [],
       stage:
@@ -51,7 +51,7 @@ For each deal, extract:
 - website_url: the company website URL (if mentioned)
 - linkedin_url: a LinkedIn profile URL for the founder/CEO (if mentioned)
 - one_liner: a concise one-line description that includes what the company does, plus any notable context like geography, raise amount, founder background (e.g. ex-YC, serial founder, ex-Google), or other standout details — but only if mentioned. Keep it punchy and useful.
-- sectors: an array of applicable industry sectors (e.g., ["AI/ML", "Developer Tools"]). Common sectors: "AI/ML", "Fintech", "Climate Tech", "SaaS", "Robotics", "Healthcare", "Energy", "AgTech", "Deep Tech", "Consumer", "Marketplace", "Biotech", "Defence", "Cybersecurity", "EdTech", "PropTech". Infer from the description.
+- sectors: an array of applicable industry sectors. Valid values: "AI/ML", "SaaS", "Fintech", "Climate Tech", "Healthcare", "Biotech", "Robotics", "Deep Tech", "Defence", "Cybersecurity", "Energy", "AgTech", "Consumer", "Marketplace", "Developer Tools", "EdTech", "PropTech". Use ONLY these exact values. Infer from the description.
 - stage: the investment stage, one of: "pre-seed", "seed", "series-a", "series-b", "series-c", "growth". Infer from context: <500K is likely pre-seed, 500K-3M is likely pre-seed/seed, 3M-8M is likely seed, 8M-20M is likely series-a, 20M-50M is likely series-b, 50M+ is likely series-c or growth. Use null if not determinable.
 - raise_amount: the amount being raised as a number (e.g., 4000000 for 4M), or null if not mentioned
 - currency: the currency (EUR, USD, GBP, etc.), or null if not mentioned

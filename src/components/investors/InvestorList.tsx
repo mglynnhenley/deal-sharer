@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import type { Investor } from '@/lib/supabase/types'
-import { DEAL_STAGES } from '@/lib/supabase/types'
+import { DEAL_STAGES, DEAL_SECTORS } from '@/lib/supabase/types'
 import { EditableField } from '@/components/EditableField'
+import { MultiSelectDropdown } from '@/components/MultiSelectDropdown'
 import { updateInvestor, deleteInvestor } from '@/app/investors/actions'
 
 const frequencyOptions = [
@@ -32,11 +33,10 @@ export function InvestorList({ investors }: { investors: Investor[] }) {
 
 function InvestorRow({ investor }: { investor: Investor }) {
   const [stages, setStages] = useState<Set<string>>(new Set(investor.stages || []))
+  const [sectors, setSectors] = useState<string[]>(investor.sectors || [])
 
   async function handleUpdate(field: string, value: string) {
     let parsed: string | number | string[] | null = value || null
-    if (field === 'sectors')
-      parsed = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : []
     return updateInvestor(investor.id, field, parsed)
   }
 
@@ -99,14 +99,19 @@ function InvestorRow({ investor }: { investor: Investor }) {
             </div>
           </div>
           <div className="mt-1.5">
-            <span className="text-xs text-accent">
-              <EditableField
-                value={investor.sectors?.join(', ') || ''}
-                onSave={(v) => handleUpdate('sectors', v)}
-                placeholder="Add sectors (comma-separated)..."
-                className="text-xs"
-              />
-            </span>
+            <MultiSelectDropdown
+              options={[...DEAL_SECTORS]}
+              selected={sectors}
+              onChange={async (next) => {
+                setSectors(next)
+                const result = await updateInvestor(investor.id, 'sectors', next)
+                if (result.error) {
+                  setSectors(investor.sectors || [])
+                  alert(result.error)
+                }
+              }}
+              placeholder="Add sectors..."
+            />
           </div>
           <div className="mt-1">
             <EditableField

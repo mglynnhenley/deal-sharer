@@ -97,3 +97,10 @@ export type InvestorInsert = Omit<Investor, 'id' | 'created_at'>
 
 export const DEAL_STAGES = ['pre-seed', 'seed', 'series-a', 'series-b', 'series-c', 'growth'] as const
 export type DealStage = (typeof DEAL_STAGES)[number]
+
+export const DEAL_SECTORS = [
+  'AI/ML', 'SaaS', 'Fintech', 'Climate Tech', 'Healthcare', 'Biotech',
+  'Robotics', 'Deep Tech', 'Defence', 'Cybersecurity', 'Energy', 'AgTech',
+  'Consumer', 'Marketplace', 'Developer Tools', 'EdTech', 'PropTech',
+] as const
+export type DealSector = (typeof DEAL_SECTORS)[number]
