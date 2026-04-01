@@ -2,16 +2,29 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { login } from './actions'
+import { login, resetPassword } from './actions'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
+  const [resetSent, setResetSent] = useState(false)
 
   async function handleSubmit(formData: FormData) {
     const result = await login(formData)
     if (result?.error) {
       setError(result.error)
     }
+  }
+
+  async function handleReset(e: React.MouseEvent) {
+    e.preventDefault()
+    setError(null)
+    setResetSent(false)
+    const form = e.currentTarget.closest('form')
+    if (!form) return
+    const formData = new FormData(form)
+    const result = await resetPassword(formData)
+    if (result.error) setError(result.error)
+    else setResetSent(true)
   }
 
   return (
@@ -34,11 +47,19 @@ export default function LoginPage() {
             className="w-full px-3 py-2 border rounded-md"
           />
           {error && <p className="text-red-600 text-sm">{error}</p>}
+          {resetSent && <p className="text-green-600 text-sm">Password reset email sent. Check your inbox.</p>}
           <button
             type="submit"
             className="w-full py-2 bg-black text-white rounded-md hover:bg-gray-800"
           >
             Log in
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="w-full text-sm text-gray-600 hover:text-black"
+          >
+            Forgot password?
           </button>
         </form>
         <p className="text-center text-sm text-gray-600">
