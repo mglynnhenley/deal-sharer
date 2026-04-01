@@ -48,9 +48,9 @@ export const DEAL_EXTRACTION_PROMPT = `You are a deal extraction assistant. Give
 
 For each deal, extract:
 - company_name: the company name. If no company name is given, use the founder/CEO name instead.
-- website_url: the company website URL (if mentioned)
-- linkedin_url: a LinkedIn profile URL for the founder/CEO (if mentioned)
-- one_liner: a concise one-line description that includes what the company does, plus any notable context like geography, raise amount, founder background (e.g. ex-YC, serial founder, ex-Google), or other standout details — but only if mentioned. Keep it punchy and useful.
+- website_url: the company website URL (if mentioned). If no website is given but a LinkedIn company page or founder profile URL is available, put that here instead.
+- linkedin_url: a LinkedIn profile URL for the founder/CEO (if mentioned). Can be null if not available.
+- one_liner: a sharp, VC-style one-liner. Lead with what the company actually builds or does in plain language (no buzzwords). Then add the most useful context: geography, traction metrics, founder pedigree (e.g. "ex-Stripe", "2x founder"), raise size, or notable investors — but only what's mentioned. Aim for the kind of line a partner would skim in a deal memo. Examples: "Builds real-time carbon accounting for supply chains. Berlin, raising €4M seed. CEO ex-McKinsey.", "Mobile bank for gig workers in LatAm. 50K MAU, $2M ARR run-rate."
 - sectors: an array of applicable industry sectors. Valid values: "AI/ML", "SaaS", "Fintech", "Climate Tech", "Healthcare", "Biotech", "Robotics", "Deep Tech", "Defence", "Cybersecurity", "Energy", "AgTech", "Consumer", "Marketplace", "Developer Tools", "EdTech", "PropTech". Use ONLY these exact values. Infer from the description.
 - stage: the investment stage, one of: "pre-seed", "seed", "series-a", "series-b", "series-c", "growth". Infer from context: <500K is likely pre-seed, 500K-3M is likely pre-seed/seed, 3M-8M is likely seed, 8M-20M is likely series-a, 20M-50M is likely series-b, 50M+ is likely series-c or growth. Use null if not determinable.
 - raise_amount: the amount being raised as a number (e.g., 4000000 for 4M), or null if not mentioned

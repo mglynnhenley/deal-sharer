@@ -184,11 +184,21 @@ function DealRow({ deal }: { deal: Deal }) {
             {deal.one_liner && (
               <p className="text-sm text-secondary mt-0.5">{deal.one_liner}</p>
             )}
-            {deal.website_url && (
-              <a href={deal.website_url} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-accent hover:underline">
-                {deal.website_url}
-              </a>
+            {(deal.website_url || deal.linkedin_url) && (
+              <div className="flex gap-3 mt-0.5">
+                {deal.website_url && (
+                  <a href={deal.website_url} target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-accent hover:underline">
+                    {deal.website_url}
+                  </a>
+                )}
+                {deal.linkedin_url && (
+                  <a href={deal.linkedin_url} target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-accent hover:underline">
+                    LinkedIn
+                  </a>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -262,12 +272,13 @@ function DealRow({ deal }: { deal: Deal }) {
             />
           </div>
           <div className="flex gap-3 mt-1">
-            {deal.website_url && (
-              <a href={deal.website_url} target="_blank" rel="noopener noreferrer"
-                className="text-sm text-accent hover:underline">
-                {deal.website_url}
-              </a>
-            )}
+            <span className="text-sm text-accent">
+              <EditableField
+                value={deal.website_url || ''}
+                onSave={(v) => handleUpdate('website_url', v)}
+                placeholder="Add website..."
+              />
+            </span>
             <span className="text-sm text-accent">
               <EditableField
                 value={deal.linkedin_url || ''}
