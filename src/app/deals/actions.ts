@@ -8,13 +8,9 @@ import type { DealInsert } from '@/lib/supabase/types'
 export async function saveDeals(deals: DealInsert[]) {
   const supabase = await createClient()
 
-  // Fetch user's fund_id for deal inserts
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('fund_id')
-    .single()
-  if (!profile) return { error: 'User profile not found' }
-  const fundId = profile.fund_id
+  // Fetch user's fund_id (auto-creates profile if missing)
+  const { data: fundId, error: profileError } = await supabase.rpc('get_my_fund_id')
+  if (profileError || !fundId) return { error: profileError?.message || 'Could not resolve user profile' }
 
   // Fetch all existing shared deals for dedup (RLS scopes to user's fund)
   const { data: existingData } = await supabase
