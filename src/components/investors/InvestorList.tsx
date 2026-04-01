@@ -17,16 +17,47 @@ function formatStage(stage: string): string {
   return stage.replace('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function matchesSearch(inv: Investor, query: string): boolean {
+  const q = query.toLowerCase()
+  return (
+    inv.contact_name.toLowerCase().includes(q) ||
+    (inv.fund_name?.toLowerCase().includes(q) ?? false) ||
+    (inv.email?.toLowerCase().includes(q) ?? false) ||
+    (inv.thesis_description?.toLowerCase().includes(q) ?? false) ||
+    inv.sectors.some((s) => s.toLowerCase().includes(q)) ||
+    (inv.stages || []).some((s) => s.toLowerCase().includes(q))
+  )
+}
+
 export function InvestorList({ investors }: { investors: Investor[] }) {
+  const [search, setSearch] = useState('')
+
   if (investors.length === 0) {
     return <p className="text-secondary text-sm">No investors yet.</p>
   }
 
+  const filtered = search.trim()
+    ? investors.filter((inv) => matchesSearch(inv, search.trim()))
+    : investors
+
   return (
-    <div className="space-y-2">
-      {investors.map((inv) => (
-        <InvestorRow key={inv.id} investor={inv} />
-      ))}
+    <div className="space-y-4">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search investors..."
+        className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20 placeholder:text-secondary"
+      />
+      {filtered.length === 0 ? (
+        <p className="text-secondary text-sm">No investors match your search.</p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((inv) => (
+            <InvestorRow key={inv.id} investor={inv} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
