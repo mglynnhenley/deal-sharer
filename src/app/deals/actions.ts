@@ -135,16 +135,6 @@ export async function deleteDeal(dealId: string) {
   if (error) return { error: error.message }
   if (!data || data.length === 0) return { error: 'Deal not found or no permission to delete' }
 
-  // If no other users have this deal linked, delete the shared deal too
-  const { count } = await supabase
-    .from('user_deals')
-    .select('id', { count: 'exact', head: true })
-    .eq('deal_id', dealId)
-
-  if (count === 0) {
-    await supabase.from('deals').delete().eq('id', dealId)
-  }
-
   revalidatePath('/')
   return { success: true }
 }
