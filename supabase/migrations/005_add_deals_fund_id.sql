@@ -67,7 +67,7 @@ CREATE POLICY "Users can view fund deals" ON deals FOR SELECT USING (
 CREATE POLICY "Users can insert fund deals" ON deals FOR INSERT WITH CHECK (
   fund_id = (SELECT fund_id FROM profiles WHERE id = auth.uid())
 );
-CREATE POLICY "Creator can update fund deals" ON deals FOR UPDATE USING (
-  created_by = auth.uid() AND fund_id = (SELECT fund_id FROM profiles WHERE id = auth.uid())
+CREATE POLICY "Fund members can update deals" ON deals FOR UPDATE USING (
+  fund_id = (SELECT fund_id FROM profiles WHERE id = auth.uid())
 );
 -- DELETE policy ("Authenticated users can delete deals") is already correct per migration 003

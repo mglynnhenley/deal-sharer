@@ -175,31 +175,69 @@ function DealRow({ deal }: { deal: Deal }) {
   if (!deal.is_in_my_list) {
     return (
       <div className="p-4 bg-muted/30">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-secondary">{deal.company_name}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-secondary">
+                <EditableField
+                  value={deal.company_name}
+                  onSave={(v) => handleUpdate('company_name', v)}
+                />
+              </span>
               <span className="text-xs text-secondary/60">Team deal</span>
+              {deal.stage ? (
+                <EditableField
+                  value={deal.stage}
+                  onSave={(v) => handleUpdate('stage', v)}
+                  type="select"
+                  options={stageOptions}
+                  className="text-xs font-medium px-2 py-0.5 rounded bg-violet-50 text-violet-800"
+                />
+              ) : (
+                <EditableField
+                  value=""
+                  onSave={(v) => handleUpdate('stage', v)}
+                  type="select"
+                  options={stageOptions}
+                  className="text-xs text-secondary"
+                  placeholder="Stage"
+                />
+              )}
+              <MultiSelectDropdown
+                options={[...DEAL_SECTORS]}
+                selected={deal.sectors}
+                onChange={async (sectors) => {
+                  const result = await updateDeal(deal.id, 'sectors', sectors)
+                  if (result.error) alert(result.error)
+                  else router.refresh()
+                }}
+                placeholder="Sectors..."
+              />
             </div>
-            {deal.one_liner && (
-              <p className="text-sm text-secondary mt-0.5">{deal.one_liner}</p>
-            )}
-            {(deal.website_url || deal.linkedin_url) && (
-              <div className="flex gap-3 mt-0.5">
-                {deal.website_url && (
-                  <a href={deal.website_url} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-accent hover:underline">
-                    {deal.website_url}
-                  </a>
-                )}
-                {deal.linkedin_url && (
-                  <a href={deal.linkedin_url} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-accent hover:underline">
-                    LinkedIn
-                  </a>
-                )}
-              </div>
-            )}
+            <div className="mt-1.5">
+              <EditableField
+                value={deal.one_liner || ''}
+                onSave={(v) => handleUpdate('one_liner', v)}
+                placeholder="Add a one-liner..."
+                className="text-sm text-secondary"
+              />
+            </div>
+            <div className="flex gap-3 mt-1">
+              <span className="text-sm text-accent">
+                <EditableField
+                  value={deal.website_url || ''}
+                  onSave={(v) => handleUpdate('website_url', v)}
+                  placeholder="Add website..."
+                />
+              </span>
+              <span className="text-sm text-accent">
+                <EditableField
+                  value={deal.linkedin_url || ''}
+                  onSave={(v) => handleUpdate('linkedin_url', v)}
+                  placeholder="Add LinkedIn..."
+                />
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={handleAddToList} disabled={adding}
