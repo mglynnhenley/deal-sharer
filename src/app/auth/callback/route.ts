@@ -10,5 +10,8 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(`${origin}/`)
+  const next = searchParams.get('next') ?? '/'
+  // Only allow relative paths to prevent open redirect attacks
+  const redirectPath = next.startsWith('/') ? next : '/'
+  return NextResponse.redirect(`${origin}${redirectPath}`)
 }
