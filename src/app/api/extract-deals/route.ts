@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { parseDealsFromLLMResponse, DEAL_EXTRACTION_PROMPT } from '@/lib/extraction/deals'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+}
 
 export async function POST(request: NextRequest) {
   const { text } = await request.json()
@@ -11,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'text field is required' }, { status: 400 })
   }
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o',
     max_tokens: 4096,
     messages: [
