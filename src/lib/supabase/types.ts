@@ -69,6 +69,7 @@ export type Investor = {
   stages: string[]
   thesis_description: string | null
   raw_source_text: string | null
+  starred: boolean
 }
 
 export type ShareRecord = {

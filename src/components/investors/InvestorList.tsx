@@ -36,9 +36,13 @@ export function InvestorList({ investors }: { investors: Investor[] }) {
     return <p className="text-secondary text-sm">No investors yet.</p>
   }
 
-  const filtered = search.trim()
+  const searched = search.trim()
     ? investors.filter((inv) => matchesSearch(inv, search.trim()))
     : investors
+  const filtered = [...searched].sort((a, b) => {
+    if (a.starred !== b.starred) return a.starred ? -1 : 1
+    return a.contact_name.localeCompare(b.contact_name)
+  })
 
   return (
     <div className="space-y-4">
@@ -63,6 +67,7 @@ export function InvestorList({ investors }: { investors: Investor[] }) {
 }
 
 function InvestorRow({ investor }: { investor: Investor }) {
+  const [starred, setStarred] = useState(investor.starred)
   const [stages, setStages] = useState<Set<string>>(new Set(investor.stages || []))
   const [sectors, setSectors] = useState<string[]>(investor.sectors || [])
 
@@ -87,7 +92,23 @@ function InvestorRow({ investor }: { investor: Investor }) {
   return (
     <div className="border border-border rounded-lg p-4 bg-surface">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <button
+            onClick={async () => {
+              const next = !starred
+              setStarred(next)
+              const result = await updateInvestor(investor.id, 'starred', next as unknown as string)
+              if (result.error) {
+                setStarred(starred)
+                alert(result.error)
+              }
+            }}
+            className="mt-0.5 text-lg shrink-0"
+            title={starred ? 'Unstar' : 'Star'}
+          >
+            {starred ? '\u2605' : '\u2606'}
+          </button>
+          <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-foreground">
               <EditableField
@@ -162,6 +183,7 @@ function InvestorRow({ investor }: { investor: Investor }) {
             <span className="text-sm text-accent">
               <EditableField value={investor.linkedin_url || ''} onSave={(v) => handleUpdate('linkedin_url', v)} placeholder="Add LinkedIn URL..." />
             </span>
+          </div>
           </div>
         </div>
         <button
