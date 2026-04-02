@@ -72,14 +72,20 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
   )
 
   const filteredInvestors = useMemo(() => {
-    if (!investorSearch.trim()) return investors
-    const q = investorSearch.toLowerCase()
-    return investors.filter(
-      (inv) =>
-        inv.contact_name.toLowerCase().includes(q) ||
-        (inv.fund_name?.toLowerCase().includes(q) ?? false) ||
-        (inv.email?.toLowerCase().includes(q) ?? false),
-    )
+    let list = investors
+    if (investorSearch.trim()) {
+      const q = investorSearch.toLowerCase()
+      list = list.filter(
+        (inv) =>
+          inv.contact_name.toLowerCase().includes(q) ||
+          (inv.fund_name?.toLowerCase().includes(q) ?? false) ||
+          (inv.email?.toLowerCase().includes(q) ?? false),
+      )
+    }
+    return [...list].sort((a, b) => {
+      if (a.starred !== b.starred) return a.starred ? -1 : 1
+      return a.contact_name.localeCompare(b.contact_name)
+    })
   }, [investors, investorSearch])
 
   // Collect all unique sectors from deals for the filter dropdown
@@ -356,6 +362,7 @@ export function ShareListBuilder({ investors, deals, lastSharedDates }: Props) {
                   />
                   <div className="flex items-center justify-between gap-1 flex-1 min-w-0">
                     <span className="truncate text-foreground">
+                      {inv.starred && <span className="text-orange-400 mr-1">{'\u2605'}</span>}
                       {inv.contact_name}
                       {inv.fund_name && (
                         <span className="text-xs ml-1 text-secondary">

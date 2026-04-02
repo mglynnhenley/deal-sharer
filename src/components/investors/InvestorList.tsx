@@ -92,23 +92,7 @@ function InvestorRow({ investor }: { investor: Investor }) {
   return (
     <div className="border border-border rounded-lg p-4 bg-surface">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-2 flex-1 min-w-0">
-          <button
-            onClick={async () => {
-              const next = !starred
-              setStarred(next)
-              const result = await updateInvestor(investor.id, 'starred', next as unknown as string)
-              if (result.error) {
-                setStarred(starred)
-                alert(result.error)
-              }
-            }}
-            className="mt-0.5 text-lg shrink-0"
-            title={starred ? 'Unstar' : 'Star'}
-          >
-            {starred ? '\u2605' : '\u2606'}
-          </button>
-          <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-foreground">
               <EditableField
@@ -184,14 +168,30 @@ function InvestorRow({ investor }: { investor: Investor }) {
               <EditableField value={investor.linkedin_url || ''} onSave={(v) => handleUpdate('linkedin_url', v)} placeholder="Add LinkedIn URL..." />
             </span>
           </div>
+          <div className="flex items-center justify-end gap-3 mt-2">
+            <button
+              onClick={async () => {
+                const next = !starred
+                setStarred(next)
+                const result = await updateInvestor(investor.id, 'starred', next as unknown as string)
+                if (result.error) {
+                  setStarred(starred)
+                  alert(result.error)
+                }
+              }}
+              className={`text-lg ${starred ? 'text-orange-400' : 'text-gray-300 hover:text-orange-300'}`}
+              title={starred ? 'Unstar' : 'Star'}
+            >
+              {starred ? '\u2605' : '\u2606'}
+            </button>
+            <button
+              onClick={async () => { if (confirm('Delete this investor?')) await deleteInvestor(investor.id) }}
+              className="text-sm text-secondary hover:text-accent"
+            >
+              Delete
+            </button>
           </div>
         </div>
-        <button
-          onClick={async () => { if (confirm('Delete this investor?')) await deleteInvestor(investor.id) }}
-          className="text-sm text-secondary hover:text-accent shrink-0"
-        >
-          Delete
-        </button>
       </div>
     </div>
   )
